@@ -152,7 +152,7 @@ a { color: var(--accent); text-decoration: none; }
 <div class="screen active" id="screen-team">
   <div class="screen-title">👥 Digital Office</div>
   <div class="stats-bar">
-    <div class="stat-card"><div class="stat-label">Team Members</div><div class="stat-value">8</div></div>
+    <div class="stat-card"><div class="stat-label">Team Members</div><div class="stat-value">11</div></div>
     <div class="stat-card"><div class="stat-label">Active Now</div><div class="stat-value" style="color:var(--success)">0</div></div>
     <div class="stat-card"><div class="stat-label">Tasks In Progress</div><div class="stat-value" style="color:var(--warning)">0</div></div>
     <div class="stat-card"><div class="stat-label">Completed Today</div><div class="stat-value" style="color:var(--accent)">0</div></div>
@@ -235,6 +235,11 @@ const team = [
   ]},
   { dept: "Research & Strategy", members: [
     { name:"Scout", role:"Market Researcher", avatar:"🔍", color:"#6366f1", status:"idle", task:"Competitor analysis, market research, pricing", screen:"Waiting for assignment..." },
+  ]},
+  { dept: "Trading Bots", members: [
+    { name:"SkimTrady", role:"Market Analyst Bot", avatar:"📈", color:"#10b981", status:"working", task:"Scanning markets + posting trade signals", screen:"Running as daemon — port active" },
+    { name:"Pmac", role:"Polymarket Bot", avatar:"🎲", color:"#f59e0b", status:"working", task:"Tracking prediction markets + posting to #polymarket", screen:"Running as daemon — Discord bot active" },
+    { name:"AskPope", role:"Discord Bot", avatar:"🤖", color:"#8b5cf6", status:"working", task:"Community engagement bot", screen:"Running as daemon — Discord bot active" },
   ]},
 ];
 
@@ -400,6 +405,9 @@ const ideas = [
   { title:"Dextor AI Outreach", icon:"📧", status:"active", desc:"Instantly email campaigns — 511+ Texas leads across 11 cities. Hypergrowth plan. Cold email + follow-up sequences.", revenue:"Pipeline", tags:["Outreach","Email","Leads"], started:"2026-02", business:"Dextor AI" },
   { title:"ClearMeds Physical Mailer", icon:"📬", status:"hold", desc:"Triple-touch direct mail sequence to clinics. Sales letter, price list insert, mailing list CSV ready.", revenue:"B2B pipeline", tags:["Direct Mail","B2B","Outreach"], started:"2026-02", business:"ClearMeds" },
   { title:"Mission Control", icon:"🖥️", status:"launched", desc:"Centralized dashboard for all operations — team view, task board, calendar, memory bank, and ideas tracker.", revenue:"—", tags:["Internal","Dashboard","Ops"], started:"2026-03", business:"Infrastructure" },
+  { title:"SkimTrady", icon:"📈", status:"active", desc:"Market analysis bot — scans markets and posts trade signals. Runs as always-on daemon on Mac mini.", revenue:"Trading signals", tags:["Bot","Trading","Discord"], started:"2025", business:"Infrastructure" },
+  { title:"Pmac (Polymarket Bot)", icon:"🎲", status:"active", desc:"Prediction market tracker — monitors Polymarket and posts updates to #polymarket Discord channel. Separate bot token.", revenue:"Market intel", tags:["Bot","Polymarket","Discord"], started:"2025", business:"Infrastructure" },
+  { title:"AskPope", icon:"🤖", status:"active", desc:"Discord community engagement bot. Runs as always-on daemon.", revenue:"—", tags:["Bot","Discord","Community"], started:"2025", business:"Infrastructure" },
   { title:"AI Fallback Chain", icon:"🔄", status:"launched", desc:"Claude Opus → Gemini 2.5 Flash → Ollama llama3.2. Never lose contact when a provider is overloaded.", revenue:"—", tags:["Infrastructure","Reliability"], started:"2026-03", business:"Infrastructure" },
 ];
 
