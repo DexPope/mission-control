@@ -108,6 +108,24 @@ a { color: var(--accent); text-decoration: none; }
 .stat-value { font-size:28px; font-weight:800; }
 .stat-value .unit { font-size:14px; color: var(--dim); }
 
+/* IDEAS */
+.ideas-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(340px,1fr)); gap:16px; }
+.idea-card { background: var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; transition: all .2s; }
+.idea-card:hover { border-color: var(--accent); transform:translateY(-1px); }
+.idea-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.idea-title { font-weight:700; font-size:16px; display:flex; align-items:center; gap:8px; }
+.idea-status { padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; text-transform:uppercase; }
+.idea-status.active { background:rgba(16,185,129,.15); color:var(--success); }
+.idea-status.planning { background:rgba(6,182,212,.15); color:var(--accent2); }
+.idea-status.idea { background:rgba(139,92,246,.15); color:var(--purple); }
+.idea-status.hold { background:rgba(245,158,11,.15); color:var(--warning); }
+.idea-status.launched { background:rgba(0,212,170,.15); color:var(--accent); }
+.idea-desc { font-size:13px; color:var(--dim); line-height:1.5; margin-bottom:12px; }
+.idea-meta { display:flex; flex-wrap:wrap; gap:8px; }
+.idea-tag { background:var(--bg); padding:3px 10px; border-radius:8px; font-size:11px; color:var(--dim); }
+.idea-revenue { color:var(--accent); font-weight:700; }
+.idea-date { font-size:11px; color:var(--dim); margin-top:8px; }
+
 /* RESPONSIVE */
 @media(max-width:768px) {
   .board { grid-template-columns: 1fr 1fr; }
@@ -125,6 +143,7 @@ a { color: var(--accent); text-decoration: none; }
     <button onclick="showScreen('tasks')">📋 Tasks</button>
     <button onclick="showScreen('calendar')">📅 Calendar</button>
     <button onclick="showScreen('memory')">🧠 Memory</button>
+    <button onclick="showScreen('ideas')">💡 Ideas</button>
   </div>
   <div class="topbar-time" id="clock"></div>
 </div>
@@ -174,6 +193,18 @@ a { color: var(--accent); text-decoration: none; }
   <div class="screen-title">🧠 Memory Bank</div>
   <input type="text" class="memory-search" id="memorySearch" placeholder="🔍 Search memories... (people, projects, decisions, dates)" oninput="filterMemories()">
   <div class="memory-grid" id="memoryGrid"></div>
+</div>
+
+<!-- ==================== IDEAS SCREEN ==================== -->
+<div class="screen" id="screen-ideas">
+  <div class="screen-title">💡 Ideas & Projects</div>
+  <div class="stats-bar">
+    <div class="stat-card"><div class="stat-label">Total Ideas</div><div class="stat-value" id="stat-ideas">0</div></div>
+    <div class="stat-card"><div class="stat-label">Active Projects</div><div class="stat-value" style="color:var(--success)" id="stat-active-proj">0</div></div>
+    <div class="stat-card"><div class="stat-label">On Hold</div><div class="stat-value" style="color:var(--warning)" id="stat-hold-proj">0</div></div>
+    <div class="stat-card"><div class="stat-label">Revenue Potential</div><div class="stat-value" style="color:var(--accent)" id="stat-rev">$0</div></div>
+  </div>
+  <div class="ideas-grid" id="ideasGrid"></div>
 </div>
 
 <!-- MEMORY MODAL -->
@@ -358,6 +389,45 @@ function openMemory(idx) {
 }
 function closeMemory() { document.getElementById('memoryModal').classList.remove('open'); }
 
+// ========== IDEAS ==========
+const ideas = [
+  { title:"Dextor AI", icon:"⚡", status:"active", desc:"AI automation agency — voice agents, chatbots, email/SMS automation for local businesses. $1,500/mo per client.", revenue:"$1,500/mo per client", tags:["Agency","AI","Local Biz"], started:"2025-12", business:"Dextor AI" },
+  { title:"ClearMedsCorp", icon:"💊", status:"active", desc:"Wholesale peptide manufacturer selling to clinics. Domestic manufacturing = no 15% import tariffs.", revenue:"B2B wholesale", tags:["Peptides","B2B","Manufacturing"], started:"2025-10", business:"ClearMeds" },
+  { title:"ASRX.health", icon:"🏥", status:"planning", desc:"DTC telehealth access & coordination platform. Intake → provider matching → ClearMeds supplies peptides. 58-73% gross margins via vertical integration.", revenue:"$249-399/mo per patient", tags:["Telehealth","DTC","Peptides"], started:"2026-02", business:"AccessRx" },
+  { title:"ASRX.life", icon:"🧬", status:"idea", desc:"Research peptide platform. Supply from PepLabs.bio, backend via IRB. Sister brand to ASRX.health for research-use compounds.", revenue:"TBD", tags:["Research","Peptides","IRB"], started:"2026-02", business:"AccessRx" },
+  { title:"iMessage Farm", icon:"📱", status:"planning", desc:"Build our own Sendblue competitor — iPhone farm managed by Mac Mini. Sell iMessage automation as premium Dextor AI service. ~$647 startup, $5K-10K/mo at 10 clients.", revenue:"$500-1,000/mo per line", tags:["Infrastructure","iMessage","SaaS"], started:"2026-03", business:"Dextor AI" },
+  { title:"ASRX Site Redesign", icon:"🎨", status:"planning", desc:"Redesign ASRX.health website — hybrid between TrimRx (warm, simple) and AlgoRx (bold, dark). Smoother and more inviting.", revenue:"—", tags:["Design","Website","ASRX"], started:"2026-03", business:"AccessRx" },
+  { title:"Dextor AI Outreach", icon:"📧", status:"active", desc:"Instantly email campaigns — 511+ Texas leads across 11 cities. Hypergrowth plan. Cold email + follow-up sequences.", revenue:"Pipeline", tags:["Outreach","Email","Leads"], started:"2026-02", business:"Dextor AI" },
+  { title:"ClearMeds Physical Mailer", icon:"📬", status:"hold", desc:"Triple-touch direct mail sequence to clinics. Sales letter, price list insert, mailing list CSV ready.", revenue:"B2B pipeline", tags:["Direct Mail","B2B","Outreach"], started:"2026-02", business:"ClearMeds" },
+  { title:"Mission Control", icon:"🖥️", status:"launched", desc:"Centralized dashboard for all operations — team view, task board, calendar, memory bank, and ideas tracker.", revenue:"—", tags:["Internal","Dashboard","Ops"], started:"2026-03", business:"Infrastructure" },
+  { title:"AI Fallback Chain", icon:"🔄", status:"launched", desc:"Claude Opus → Gemini 2.5 Flash → Ollama llama3.2. Never lose contact when a provider is overloaded.", revenue:"—", tags:["Infrastructure","Reliability"], started:"2026-03", business:"Infrastructure" },
+];
+
+function renderIdeas() {
+  const grid = document.getElementById('ideasGrid');
+  const active = ideas.filter(i => i.status==='active').length;
+  const hold = ideas.filter(i => i.status==='hold').length;
+  document.getElementById('stat-ideas').textContent = ideas.length;
+  document.getElementById('stat-active-proj').textContent = active;
+  document.getElementById('stat-hold-proj').textContent = hold;
+  document.getElementById('stat-rev').textContent = '$' + ideas.filter(i=>i.revenue && i.revenue!=='—' && i.revenue!=='TBD' && i.revenue!=='Pipeline' && i.revenue!=='B2B wholesale' && i.revenue!=='B2B pipeline').length + ' revenue streams';
+
+  grid.innerHTML = ideas.map(idea => `
+    <div class="idea-card">
+      <div class="idea-header">
+        <div class="idea-title">${idea.icon} ${idea.title}</div>
+        <div class="idea-status ${idea.status}">${idea.status}</div>
+      </div>
+      <div class="idea-desc">${idea.desc}</div>
+      <div class="idea-meta">
+        ${idea.tags.map(t => `<span class="idea-tag">${t}</span>`).join('')}
+        ${idea.revenue !== '—' ? `<span class="idea-tag idea-revenue">${idea.revenue}</span>` : ''}
+      </div>
+      <div class="idea-date">Started: ${idea.started} · ${idea.business}</div>
+    </div>
+  `).join('');
+}
+
 // ========== NAVIGATION ==========
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -382,6 +452,7 @@ renderOffice();
 renderTasks();
 renderCalendar();
 renderMemories();
+renderIdeas();
 </script>
 </body>
 </html>
