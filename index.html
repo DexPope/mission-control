@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEX Mission Control</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg: #0a0e17; --surface: #111827; --surface2: #1a2236;
+  --border: #1e293b; --text: #e2e8f0; --dim: #64748b;
+  --accent: #00d4aa; --accent2: #06b6d4; --warning: #f59e0b;
+  --danger: #ef4444; --success: #10b981; --purple: #8b5cf6;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+a { color: var(--accent); text-decoration: none; }
+
+/* NAV */
+.topbar { display:flex; align-items:center; justify-content:space-between; padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border); position:sticky; top:0; z-index:100; }
+.topbar-logo { font-size:20px; font-weight:800; letter-spacing:2px; }
+.topbar-logo span { color: var(--accent); }
+.topbar-nav { display:flex; gap:4px; }
+.topbar-nav button { background:none; border:1px solid transparent; color: var(--dim); padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; transition:all .2s; }
+.topbar-nav button:hover { color: var(--text); background: var(--surface2); }
+.topbar-nav button.active { color: var(--accent); border-color: var(--accent); background: rgba(0,212,170,.08); }
+.topbar-time { font-size:12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+
+/* SCREENS */
+.screen { display:none; padding:24px; max-width:1400px; margin:0 auto; }
+.screen.active { display:block; }
+.screen-title { font-size:24px; font-weight:700; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+
+/* TEAM SCREEN */
+.office-floor { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:20px; }
+.desk { background: var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px; position:relative; transition: all .3s; }
+.desk:hover { border-color: var(--accent); transform:translateY(-2px); box-shadow: 0 8px 30px rgba(0,212,170,.1); }
+.desk-status { position:absolute; top:12px; right:12px; width:10px; height:10px; border-radius:50%; }
+.desk-status.working { background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 2s infinite; }
+.desk-status.idle { background: var(--dim); }
+.desk-status.busy { background: var(--warning); box-shadow: 0 0 8px var(--warning); animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.5} }
+.desk-avatar { width:56px; height:56px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:28px; margin-bottom:12px; }
+.desk-name { font-weight:700; font-size:15px; margin-bottom:2px; }
+.desk-role { font-size:12px; color: var(--accent); font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+.desk-task { font-size:13px; color: var(--dim); line-height:1.4; }
+.desk-task.active-task { color: var(--text); }
+.desk-computer { margin-top:12px; background: var(--bg); border-radius:8px; padding:8px 12px; font-family: 'SF Mono', 'Fira Code', monospace; font-size:11px; color: var(--accent); border:1px solid var(--border); min-height:40px; overflow:hidden; }
+.dept-label { grid-column: 1/-1; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color: var(--dim); padding:12px 0 0; border-top:1px solid var(--border); margin-top:8px; }
+.dept-label:first-child { border:none; margin:0; }
+
+/* CALENDAR */
+.cal-grid { display:grid; grid-template-columns: repeat(7, 1fr); gap:2px; }
+.cal-header { text-align:center; font-size:11px; font-weight:700; color: var(--dim); text-transform:uppercase; padding:8px; }
+.cal-day { background: var(--surface); border:1px solid var(--border); border-radius:8px; min-height:100px; padding:8px; font-size:12px; }
+.cal-day.today { border-color: var(--accent); }
+.cal-day-num { font-weight:700; margin-bottom:6px; font-size:13px; }
+.cal-day.today .cal-day-num { color: var(--accent); }
+.cal-event { background: rgba(0,212,170,.12); border-left:2px solid var(--accent); padding:2px 6px; margin-bottom:3px; border-radius:0 4px 4px 0; font-size:11px; line-height:1.3; cursor:default; }
+.cal-event.cron { border-left-color: var(--purple); background: rgba(139,92,246,.12); }
+.cal-event.task { border-left-color: var(--warning); background: rgba(245,158,11,.12); }
+.cal-controls { display:flex; align-items:center; gap:16px; margin-bottom:16px; }
+.cal-controls button { background: var(--surface); border:1px solid var(--border); color: var(--text); padding:6px 14px; border-radius:6px; cursor:pointer; }
+.cal-controls button:hover { border-color: var(--accent); }
+.cal-month { font-size:18px; font-weight:700; }
+.cal-legend { display:flex; gap:16px; margin-bottom:16px; }
+.cal-legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color: var(--dim); }
+.cal-legend-dot { width:10px; height:10px; border-radius:3px; }
+
+/* MEMORY */
+.memory-search { width:100%; padding:14px 20px; background: var(--surface); border:1px solid var(--border); border-radius:12px; color: var(--text); font-size:15px; margin-bottom:20px; outline:none; transition: border .2s; }
+.memory-search:focus { border-color: var(--accent); }
+.memory-search::placeholder { color: var(--dim); }
+.memory-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(340px,1fr)); gap:16px; }
+.memory-card { background: var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; cursor:pointer; transition: all .2s; }
+.memory-card:hover { border-color: var(--accent); transform:translateY(-1px); }
+.memory-card-title { font-weight:700; font-size:15px; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+.memory-card-source { font-size:11px; color: var(--dim); margin-bottom:8px; }
+.memory-card-body { font-size:13px; color: var(--dim); line-height:1.5; max-height:120px; overflow:hidden; }
+.memory-card-body strong { color: var(--text); }
+.memory-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:200; align-items:center; justify-content:center; padding:24px; }
+.memory-modal.open { display:flex; }
+.memory-modal-content { background: var(--surface); border:1px solid var(--border); border-radius:16px; padding:32px; max-width:700px; width:100%; max-height:80vh; overflow-y:auto; }
+.memory-modal-content h2 { margin-bottom:16px; }
+.memory-modal-content pre { background: var(--bg); padding:16px; border-radius:8px; font-size:13px; line-height:1.6; white-space:pre-wrap; overflow-x:auto; }
+.memory-modal-close { float:right; background:none; border:none; color:var(--dim); font-size:24px; cursor:pointer; }
+
+/* TASK BOARD */
+.board { display:grid; grid-template-columns: repeat(4,1fr); gap:16px; }
+.board-col { background: var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; min-height:400px; }
+.board-col-title { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; }
+.board-col-count { background: var(--surface2); padding:2px 8px; border-radius:10px; font-size:11px; color: var(--dim); }
+.task-card { background: var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:10px; cursor:pointer; transition: all .2s; }
+.task-card:hover { border-color: var(--accent); }
+.task-card-title { font-size:13px; font-weight:600; margin-bottom:6px; }
+.task-card-meta { display:flex; align-items:center; gap:8px; font-size:11px; color: var(--dim); }
+.task-card-assignee { display:inline-flex; align-items:center; gap:4px; background: var(--bg); padding:2px 8px; border-radius:10px; }
+.task-card-priority { padding:2px 8px; border-radius:10px; font-size:10px; font-weight:700; text-transform:uppercase; }
+.task-card-priority.high { background: rgba(239,68,68,.15); color: var(--danger); }
+.task-card-priority.medium { background: rgba(245,158,11,.15); color: var(--warning); }
+.task-card-priority.low { background: rgba(100,116,139,.15); color: var(--dim); }
+.add-task-btn { width:100%; padding:8px; background: none; border:1px dashed var(--border); border-radius:8px; color: var(--dim); cursor:pointer; font-size:12px; margin-top:8px; }
+.add-task-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* STATS BAR */
+.stats-bar { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:12px; margin-bottom:24px; }
+.stat-card { background: var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; }
+.stat-label { font-size:11px; color: var(--dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
+.stat-value { font-size:28px; font-weight:800; }
+.stat-value .unit { font-size:14px; color: var(--dim); }
+
+/* RESPONSIVE */
+@media(max-width:768px) {
+  .board { grid-template-columns: 1fr 1fr; }
+  .office-floor { grid-template-columns: 1fr; }
+  .topbar-nav { overflow-x:auto; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">⚡ DEX <span>MISSION CONTROL</span></div>
+  <div class="topbar-nav">
+    <button class="active" onclick="showScreen('team')">👥 Team</button>
+    <button onclick="showScreen('tasks')">📋 Tasks</button>
+    <button onclick="showScreen('calendar')">📅 Calendar</button>
+    <button onclick="showScreen('memory')">🧠 Memory</button>
+  </div>
+  <div class="topbar-time" id="clock"></div>
+</div>
+
+<!-- ==================== TEAM SCREEN ==================== -->
+<div class="screen active" id="screen-team">
+  <div class="screen-title">👥 Digital Office</div>
+  <div class="stats-bar">
+    <div class="stat-card"><div class="stat-label">Team Members</div><div class="stat-value">8</div></div>
+    <div class="stat-card"><div class="stat-label">Active Now</div><div class="stat-value" style="color:var(--success)">0</div></div>
+    <div class="stat-card"><div class="stat-label">Tasks In Progress</div><div class="stat-value" style="color:var(--warning)">0</div></div>
+    <div class="stat-card"><div class="stat-label">Completed Today</div><div class="stat-value" style="color:var(--accent)">0</div></div>
+  </div>
+  <div class="office-floor" id="officeFloor"></div>
+</div>
+
+<!-- ==================== TASKS SCREEN ==================== -->
+<div class="screen" id="screen-tasks">
+  <div class="screen-title">📋 Task Board</div>
+  <div class="stats-bar">
+    <div class="stat-card"><div class="stat-label">Backlog</div><div class="stat-value" id="stat-backlog">0</div></div>
+    <div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-value" style="color:var(--warning)" id="stat-progress">0</div></div>
+    <div class="stat-card"><div class="stat-label">In Review</div><div class="stat-value" style="color:var(--purple)" id="stat-review">0</div></div>
+    <div class="stat-card"><div class="stat-label">Done</div><div class="stat-value" style="color:var(--success)" id="stat-done">0</div></div>
+  </div>
+  <div class="board" id="taskBoard"></div>
+</div>
+
+<!-- ==================== CALENDAR SCREEN ==================== -->
+<div class="screen" id="screen-calendar">
+  <div class="screen-title">📅 Calendar</div>
+  <div class="cal-controls">
+    <button onclick="changeMonth(-1)">← Prev</button>
+    <div class="cal-month" id="calMonth"></div>
+    <button onclick="changeMonth(1)">Next →</button>
+  </div>
+  <div class="cal-legend">
+    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--accent)"></div> Scheduled Task</div>
+    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--purple)"></div> Cron Job</div>
+    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--warning)"></div> Deadline</div>
+  </div>
+  <div class="cal-grid" id="calGrid"></div>
+</div>
+
+<!-- ==================== MEMORY SCREEN ==================== -->
+<div class="screen" id="screen-memory">
+  <div class="screen-title">🧠 Memory Bank</div>
+  <input type="text" class="memory-search" id="memorySearch" placeholder="🔍 Search memories... (people, projects, decisions, dates)" oninput="filterMemories()">
+  <div class="memory-grid" id="memoryGrid"></div>
+</div>
+
+<!-- MEMORY MODAL -->
+<div class="memory-modal" id="memoryModal" onclick="if(event.target===this)closeMemory()">
+  <div class="memory-modal-content">
+    <button class="memory-modal-close" onclick="closeMemory()">×</button>
+    <h2 id="memoryModalTitle"></h2>
+    <div class="memory-card-source" id="memoryModalSource"></div>
+    <pre id="memoryModalBody"></pre>
+  </div>
+</div>
+
+<script>
+// ========== TEAM DATA ==========
+const team = [
+  { dept: "Leadership", members: [
+    { name:"Dex", role:"Lead Agent", avatar:"⚡", color:"#00d4aa", status:"working", task:"Building Mission Control + managing sub-agents", screen:"mission-control/index.html — building UI" },
+  ]},
+  { dept: "Development", members: [
+    { name:"Forge", role:"Full-Stack Developer", avatar:"🔨", color:"#06b6d4", status:"idle", task:"Builds websites, apps, APIs, and tools", screen:"Waiting for assignment..." },
+    { name:"Bolt", role:"Infrastructure Engineer", avatar:"⚙️", color:"#8b5cf6", status:"idle", task:"Server setup, deployment, DevOps, DNS", screen:"Waiting for assignment..." },
+    { name:"Circuit", role:"Automation Engineer", avatar:"🔌", color:"#f59e0b", status:"idle", task:"Integrations, workflows, data pipelines", screen:"Waiting for assignment..." },
+  ]},
+  { dept: "Creative", members: [
+    { name:"Pixel", role:"UI/UX Designer", avatar:"🎨", color:"#ec4899", status:"idle", task:"Website designs, mockups, landing pages", screen:"Waiting for assignment..." },
+    { name:"Quill", role:"Content Writer", avatar:"✍️", color:"#10b981", status:"idle", task:"Blog posts, website copy, documentation", screen:"Waiting for assignment..." },
+    { name:"Echo", role:"Outreach Specialist", avatar:"📣", color:"#ef4444", status:"idle", task:"Cold emails, sales copy, follow-up sequences", screen:"Waiting for assignment..." },
+  ]},
+  { dept: "Research & Strategy", members: [
+    { name:"Scout", role:"Market Researcher", avatar:"🔍", color:"#6366f1", status:"idle", task:"Competitor analysis, market research, pricing", screen:"Waiting for assignment..." },
+  ]},
+];
+
+function renderOffice() {
+  const floor = document.getElementById('officeFloor');
+  floor.innerHTML = '';
+  let activeCount = 0;
+  team.forEach(dept => {
+    floor.innerHTML += `<div class="dept-label">${dept.dept}</div>`;
+    dept.members.forEach(m => {
+      if (m.status === 'working' || m.status === 'busy') activeCount++;
+      floor.innerHTML += `
+        <div class="desk">
+          <div class="desk-status ${m.status}"></div>
+          <div class="desk-avatar" style="background:${m.color}22;color:${m.color}">${m.avatar}</div>
+          <div class="desk-name">${m.name}</div>
+          <div class="desk-role">${m.role}</div>
+          <div class="desk-task ${m.status==='working'?'active-task':''}">${m.task}</div>
+          <div class="desk-computer">${m.screen}</div>
+        </div>`;
+    });
+  });
+  // update stats
+  document.querySelectorAll('.stats-bar .stat-value')[1].textContent = activeCount;
+}
+
+// ========== TASK BOARD ==========
+const tasks = [
+  { id:1, title:"Build ASRX.health website redesign", status:"backlog", assignee:"Dex", priority:"high", project:"ASRX" },
+  { id:2, title:"iMessage Farm architecture doc", status:"progress", assignee:"Dex", priority:"high", project:"Dextor AI" },
+  { id:3, title:"iMessage Farm shopping list", status:"progress", assignee:"Dex", priority:"high", project:"Dextor AI" },
+  { id:4, title:"ASRX site — TrimRx/AlgoRx hybrid redesign", status:"backlog", assignee:"Dex", priority:"high", project:"ASRX" },
+  { id:5, title:"Gemini fallback model — configured ✓", status:"done", assignee:"Dex", priority:"medium", project:"Infrastructure" },
+  { id:6, title:"Ollama local fallback — configured ✓", status:"done", assignee:"Dex", priority:"medium", project:"Infrastructure" },
+  { id:7, title:"Mission Control — build UI", status:"progress", assignee:"Dex", priority:"high", project:"Infrastructure" },
+  { id:8, title:"OpenLoop Health outreach email", status:"backlog", assignee:"Rich", priority:"high", project:"ASRX" },
+  { id:9, title:"Sendblue competitor research", status:"done", assignee:"Dex", priority:"medium", project:"Dextor AI" },
+  { id:10, title:"Dextor AI Instantly campaign — monitor", status:"backlog", assignee:"Dex", priority:"medium", project:"Dextor AI" },
+];
+
+const columns = [
+  { key:"backlog", label:"📥 Backlog", color:"var(--dim)" },
+  { key:"progress", label:"🔨 In Progress", color:"var(--warning)" },
+  { key:"review", label:"👀 In Review", color:"var(--purple)" },
+  { key:"done", label:"✅ Done", color:"var(--success)" },
+];
+
+function renderTasks() {
+  const board = document.getElementById('taskBoard');
+  board.innerHTML = '';
+  columns.forEach(col => {
+    const colTasks = tasks.filter(t => t.status === col.key);
+    const statEl = document.getElementById(`stat-${col.key}`);
+    if(statEl) statEl.textContent = colTasks.length;
+    let html = `<div class="board-col">
+      <div class="board-col-title">${col.label} <span class="board-col-count">${colTasks.length}</span></div>`;
+    colTasks.forEach(t => {
+      html += `<div class="task-card">
+        <div class="task-card-title">${t.title}</div>
+        <div class="task-card-meta">
+          <span class="task-card-assignee">${t.assignee==='Dex'?'⚡':'👤'} ${t.assignee}</span>
+          <span class="task-card-priority ${t.priority}">${t.priority}</span>
+          <span>${t.project}</span>
+        </div>
+      </div>`;
+    });
+    html += `<button class="add-task-btn">+ Add Task</button></div>`;
+    board.innerHTML += html;
+  });
+}
+
+// ========== CALENDAR ==========
+let calDate = new Date();
+
+const calEvents = [
+  // Add scheduled tasks and cron jobs here
+  { date:"2026-03-03", title:"Mission Control build", type:"task" },
+  { date:"2026-03-03", title:"iMessage architecture doc", type:"task" },
+  { date:"2026-03-03", title:"ASRX redesign planning", type:"task" },
+  { date:"2026-03-03", title:"Fallback models configured", type:"task" },
+];
+
+function renderCalendar() {
+  const grid = document.getElementById('calGrid');
+  const monthEl = document.getElementById('calMonth');
+  const year = calDate.getFullYear();
+  const month = calDate.getMonth();
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  monthEl.textContent = `${months[month]} ${year}`;
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+
+  let html = '';
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => html += `<div class="cal-header">${d}</div>`);
+
+  for (let i = 0; i < firstDay; i++) html += `<div></div>`;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = today.getFullYear()===year && today.getMonth()===month && today.getDate()===d;
+    const dayEvents = calEvents.filter(e => e.date === dateStr);
+    html += `<div class="cal-day${isToday?' today':''}">
+      <div class="cal-day-num">${d}</div>
+      ${dayEvents.map(e => `<div class="cal-event ${e.type}">${e.title}</div>`).join('')}
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function changeMonth(delta) {
+  calDate.setMonth(calDate.getMonth() + delta);
+  renderCalendar();
+}
+
+// ========== MEMORY ==========
+const memories = [
+  { title:"Rich (The Human)", source:"MEMORY.md", icon:"👤", body:"Runs two businesses: Dextor AI (AI automation agency) and ClearMedsCorp (wholesale peptides)\nGoal: $100K revenue ASAP. Dextor AI is the fastest path.\nUses alias 'Chayse Winter' for ClearMeds ONLY\nDiscord: jpope900 | Timezone: CST\nWorking style: moves between tasks fast, wants Dex to execute autonomously" },
+  { title:"Dextor AI", source:"MEMORY.md", icon:"⚡", body:"AI automation agency: voice agents, chatbots, email/SMS automation for local businesses\nPricing: $1,500/mo per client\nWebsite: dextor.ai (GitHub Pages)\nPhone: (832) 384-9727 (Retell AI inbound)\nGuarantee: '40% more captured leads in 90 days — or we work free until you hit it'\nOutreach: Instantly (Hypergrowth plan), 511+ Texas leads across 11 cities" },
+  { title:"ClearMedsCorp", source:"MEMORY.md", icon:"💊", body:"Wholesale peptide manufacturer selling to clinics\nWebsite: clearmeds.bio (GitHub Pages)\nPhone: (713) 280-9876\nAngle: domestic manufacturer = no 15% import tariffs, FDA compliance\nMinimum: 100 units per SKU\nSending email: sales@clearmeds.bio (warmup score 100)\nPhysical mailer kit ready in clearmeds-mail/" },
+  { title:"ASRX.health", source:"MEMORY.md", icon:"🏥", body:"DTC telehealth access & coordination platform — NOT a clinical provider\nDomain: asrx.health\nModel: Intake → eligibility filtering → route to licensed telehealth providers (OpenLoop Health) → ClearMeds supplies peptides\nRevenue: access fees per qualified user, platform fees, coordination fees, manufacturer margins\nStrict non-clinical boundary\nUnfair advantage: vertical integration — owns supply chain through ClearMeds = 58-73% gross margins" },
+  { title:"Infrastructure", source:"MEMORY.md", icon:"🖥️", body:"Mac mini (host), OpenClaw gateway at ws://127.0.0.1:18789\nOllama installed — llama3.2 (text) + llava:7b (vision)\n6 daemons running: OpenClaw, Pmac, SkimTrady, AskPope, ClawdCursor, Ollama\nFallback chain: Claude Opus → Gemini 2.5 Flash → Ollama llama3.2\nBrowser relay drops on heavy SPAs" },
+  { title:"Lessons Learned", source:"MEMORY.md", icon:"📝", body:"DALL-E fails at text/logos — always use code-built SVGs\nBrowser relay unreliable on complex SPAs — prefer API calls\nInstantly API v2 works well for lead uploads\nRich approves faster when shown screenshots/results, not asked questions\nWrap Discord links in <> to suppress embeds\nRetell dynamic variables use {{name}} not {name}\nOutbound cold calls: DON'T open with 'Hey is this [name]?'" },
+  { title:"ASRX Corporate Structure", source:"asrx/CORPORATE-STRUCTURE.md", icon:"🏢", body:"Parent company: AccessRx — ASRX is the brand name\nASRX.health supply = ClearMedsCorp (partnership), backend = OpenLoop Health\nASRX.life supply = PepLabs.bio (research peptides), backend = IRB\nClearMeds is a partner of AccessRx, NOT a subsidiary\nRich owns both domains: asrx.health and asrx.life" },
+  { title:"iMessage Farm (NEW)", source:"dextor/imessage-farm-architecture.md", icon:"📱", body:"Sendblue competitor — build our own iMessage API service\niPhone farm managed by Mac Mini\nEach client gets dedicated iPhone + number\nHybrid approach: Mac Mini = brain, iPhones = workers\nStartup cost ~$1,350 for 10 lines\nRevenue potential: $5,000-10,000/mo at 10 clients\nSell as 'AI-powered iMessage agent' through Dextor AI" },
+];
+
+function renderMemories() {
+  const grid = document.getElementById('memoryGrid');
+  const query = document.getElementById('memorySearch').value.toLowerCase();
+  const filtered = memories.filter(m =>
+    !query || m.title.toLowerCase().includes(query) || m.body.toLowerCase().includes(query)
+  );
+  grid.innerHTML = filtered.map((m,i) => `
+    <div class="memory-card" onclick="openMemory(${i})">
+      <div class="memory-card-title">${m.icon} ${m.title}</div>
+      <div class="memory-card-source">Source: ${m.source}</div>
+      <div class="memory-card-body">${m.body.replace(/\n/g,'<br>')}</div>
+    </div>
+  `).join('');
+}
+
+function filterMemories() { renderMemories(); }
+
+function openMemory(idx) {
+  const m = memories[idx];
+  document.getElementById('memoryModalTitle').textContent = m.icon + ' ' + m.title;
+  document.getElementById('memoryModalSource').textContent = 'Source: ' + m.source;
+  document.getElementById('memoryModalBody').textContent = m.body;
+  document.getElementById('memoryModal').classList.add('open');
+}
+function closeMemory() { document.getElementById('memoryModal').classList.remove('open'); }
+
+// ========== NAVIGATION ==========
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.topbar-nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ========== CLOCK ==========
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleString('en-US', {
+    timeZone:'America/Chicago', weekday:'short', month:'short', day:'numeric',
+    hour:'2-digit', minute:'2-digit', second:'2-digit'
+  });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ========== INIT ==========
+renderOffice();
+renderTasks();
+renderCalendar();
+renderMemories();
+</script>
+</body>
+</html>
