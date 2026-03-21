@@ -901,7 +901,10 @@
       <div class="sec">
         <div class="sec-label">
           <span>Tasks</span>
-          <button class="sec-link" onclick="switchTab('tasks')">View All →</button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button onclick="openAddTaskModal()" style="background:var(--accent);border:none;color:#06090F;font-family:inherit;font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;padding:4px 12px;border-radius:20px;cursor:pointer;transition:all 0.2s">+ Add</button>
+            <button class="sec-link" onclick="switchTab('tasks')">View All →</button>
+          </div>
         </div>
         <div class="task-list" id="homeTopTasks"></div>
       </div>
@@ -1910,10 +1913,107 @@
     return wrap;
   }
 
+  // ── CUSTOM TASKS (user-added) ──
+  const CUSTOM_TASKS_KEY = 'mc_custom_tasks';
+  function loadCustomTasks(){ try{return JSON.parse(localStorage.getItem(CUSTOM_TASKS_KEY)||'[]');}catch(e){return[];} }
+  function saveCustomTasks(t){ localStorage.setItem(CUSTOM_TASKS_KEY, JSON.stringify(t)); }
+
+  function buildCustomTaskItem(t, idx, compact){
+    const wrap = document.createElement('div');
+    wrap.className = 'task-item' + (t.done ? ' done' : '');
+    wrap.style.cssText = compact ? 'background:transparent;border-radius:10px;' : '';
+    wrap.innerHTML = `
+      <div class="task-cb${t.done?' checked':''}" onclick="toggleCustomTask(${idx})"><span class="chk">✓</span></div>
+      <div class="task-body" onclick="toggleCustomTask(${idx})">
+        <div class="task-name" style="color:${t.color==='gold'?'var(--gold)':t.color==='green'?'var(--green)':t.color==='purple'?'var(--purple)':'var(--accent)'}">${t.name}</div>
+        ${t.note?`<div class="task-meta-txt">${t.note}</div>`:''}
+      </div>
+      <button onclick="deleteCustomTask(${idx})" style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer;padding:0 4px;opacity:0.5">×</button>
+    `;
+    return wrap;
+  }
+
+  function toggleCustomTask(idx){
+    const tasks=loadCustomTasks();
+    if(!tasks[idx]) return;
+    tasks[idx].done=!tasks[idx].done;
+    saveCustomTasks(tasks);
+    renderHomeTopTasks();
+    renderAllTasks();
+  }
+  function deleteCustomTask(idx){
+    const tasks=loadCustomTasks();
+    tasks.splice(idx,1);
+    saveCustomTasks(tasks);
+    renderHomeTopTasks();
+    renderAllTasks();
+  }
+
+  // Add Task Modal
+  window.openAddTaskModal = function(){
+    let modal = document.getElementById('addTaskModal');
+    if(!modal){
+      modal = document.createElement('div');
+      modal.id = 'addTaskModal';
+      modal.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity 0.25s;pointer-events:none';
+      modal.innerHTML = `
+        <div style="width:100%;max-width:500px;background:#111827;border:1px solid rgba(0,212,255,0.15);border-radius:24px 24px 0 0;padding:20px 20px 40px;transform:translateY(40px);transition:transform 0.3s cubic-bezier(0.22,0,0.12,1)">
+          <div style="width:36px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:0 auto 16px"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div style="font-size:15px;font-weight:800;color:var(--text)">Add Task</div>
+            <button onclick="closeAddTaskModal()" style="background:rgba(255,255,255,0.07);border:none;color:var(--text-muted);width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px;font-family:inherit">×</button>
+          </div>
+          <input id="atName" placeholder="Task name" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:10px;color:var(--text);font-family:inherit;font-size:14px;padding:11px 14px;margin-bottom:8px;outline:none;box-sizing:border-box" />
+          <input id="atNote" placeholder="Note (optional)" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:10px;color:var(--text);font-family:inherit;font-size:14px;padding:11px 14px;margin-bottom:14px;outline:none;box-sizing:border-box" />
+          <button onclick="submitAddTask()" style="width:100%;background:var(--accent);border:none;color:#06090F;font-family:inherit;font-size:12px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;padding:13px;border-radius:12px;cursor:pointer">Add Task</button>
+        </div>`;
+      modal.addEventListener('click', function(e){ if(e.target===this) closeAddTaskModal(); });
+      document.body.appendChild(modal);
+    }
+    requestAnimationFrame(()=>{
+      modal.style.opacity='1'; modal.style.pointerEvents='all';
+      modal.querySelector('div').style.transform='translateY(0)';
+    });
+    setTimeout(()=>{ const i=document.getElementById('atName'); if(i) i.focus(); }, 350);
+  };
+
+  window.closeAddTaskModal = function(){
+    const modal = document.getElementById('addTaskModal');
+    if(!modal) return;
+    modal.style.opacity='0'; modal.style.pointerEvents='none';
+    modal.querySelector('div').style.transform='translateY(40px)';
+  };
+
+  window.submitAddTask = function(){
+    const name = (document.getElementById('atName')||{}).value?.trim();
+    if(!name) return;
+    const note = (document.getElementById('atNote')||{}).value?.trim();
+    const tasks = loadCustomTasks();
+    tasks.unshift({name, note:note||'', color:'accent', done:false, created:Date.now()});
+    saveCustomTasks(tasks);
+    closeAddTaskModal();
+    renderHomeTopTasks();
+    renderAllTasks();
+    document.getElementById('atName').value='';
+    document.getElementById('atNote').value='';
+  };
+
   function renderHomeTopTasks() {
     const el = document.getElementById('homeTopTasks'); if(!el) return;
     el.innerHTML = '';
     let count = 0;
+
+    // Custom tasks first (uncompleted)
+    const custom = loadCustomTasks();
+    custom.forEach((t,i)=>{
+      if(count >= 3) return;
+      if(!t.done){
+        el.appendChild(buildCustomTaskItem(t, i, true));
+        count++;
+      }
+    });
+
+    // Then hardcoded tasks
     for(const taskId of TASKS) {
       if(count >= 3) break;
       if(!appState.tasks[taskId]) {
@@ -1930,6 +2030,20 @@
   function renderAllTasks() {
     const el = document.getElementById('allTasksList'); if(!el) return;
     el.innerHTML = '';
+
+    // Custom tasks at top
+    const custom = loadCustomTasks();
+    if(custom.length){
+      const hdr = document.createElement('div');
+      hdr.style.cssText = 'font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);opacity:0.6;margin-bottom:8px;padding:0 4px';
+      hdr.textContent = 'My Tasks';
+      el.appendChild(hdr);
+      custom.forEach((t,i)=>{ el.appendChild(buildCustomTaskItem(t,i,false)); });
+      const div = document.createElement('div');
+      div.style.cssText = 'height:1px;background:rgba(255,255,255,0.06);margin:12px 0';
+      el.appendChild(div);
+    }
+
     TASKS.forEach(taskId => {
       const card = buildTaskCard(taskId, false);
       if(card) el.appendChild(card);
