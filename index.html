@@ -1,466 +1,2414 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DEX Mission Control</title>
-<style>
-* { margin:0; padding:0; box-sizing:border-box; }
-:root {
-  --bg: #0a0e17; --surface: #111827; --surface2: #1a2236;
-  --border: #1e293b; --text: #e2e8f0; --dim: #64748b;
-  --accent: #00d4aa; --accent2: #06b6d4; --warning: #f59e0b;
-  --danger: #ef4444; --success: #10b981; --purple: #8b5cf6;
-}
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-a { color: var(--accent); text-decoration: none; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>MC · Mission Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MC" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <meta name="theme-color" content="#06090F" />
+  <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}</script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* NAV */
-.topbar { display:flex; align-items:center; justify-content:space-between; padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border); position:sticky; top:0; z-index:100; }
-.topbar-logo { font-size:20px; font-weight:800; letter-spacing:2px; }
-.topbar-logo span { color: var(--accent); }
-.topbar-nav { display:flex; gap:4px; }
-.topbar-nav button { background:none; border:1px solid transparent; color: var(--dim); padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; transition:all .2s; }
-.topbar-nav button:hover { color: var(--text); background: var(--surface2); }
-.topbar-nav button.active { color: var(--accent); border-color: var(--accent); background: rgba(0,212,170,.08); }
-.topbar-time { font-size:12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+    :root {
+      --bg:        #06090F;
+      --surface:   rgba(255,255,255,0.035);
+      --surface2:  rgba(255,255,255,0.055);
+      --surface3:  rgba(255,255,255,0.02);
+      --border:    rgba(255,255,255,0.07);
+      --border-hi: rgba(255,255,255,0.12);
+      --accent:    #00D4FF;
+      --accent-dim:rgba(0,212,255,0.12);
+      --accent-glow:rgba(0,212,255,0.35);
+      --green:     #00E676;
+      --green-dim: rgba(0,230,118,0.12);
+      --gold:      #F6C90E;
+      --gold-dim:  rgba(246,201,14,0.12);
+      --purple:    #A855F7;
+      --purple-dim:rgba(168,85,247,0.12);
+      --warn:      #FFB020;
+      --danger:    #FF4757;
+      --text:      #E8EEF7;
+      --text-dim:  #8B9BB4;
+      --text-muted:#4A5568;
+      --nav-h:     64px;
+      --safe-b:    env(safe-area-inset-bottom, 0px);
+      --safe-t:    env(safe-area-inset-top, 0px);
+    }
 
-/* SCREENS */
-.screen { display:none; padding:24px; max-width:1400px; margin:0 auto; }
-.screen.active { display:block; }
-.screen-title { font-size:24px; font-weight:700; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+    html { font-size: 16px; -webkit-text-size-adjust: 100%; }
 
-/* TEAM SCREEN */
-.office-floor { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:20px; }
-.desk { background: var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px; position:relative; transition: all .3s; }
-.desk:hover { border-color: var(--accent); transform:translateY(-2px); box-shadow: 0 8px 30px rgba(0,212,170,.1); }
-.desk-status { position:absolute; top:12px; right:12px; width:10px; height:10px; border-radius:50%; }
-.desk-status.working { background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 2s infinite; }
-.desk-status.idle { background: var(--dim); }
-.desk-status.busy { background: var(--warning); box-shadow: 0 0 8px var(--warning); animation: pulse 1.5s infinite; }
-@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.5} }
-.desk-avatar { width:56px; height:56px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:28px; margin-bottom:12px; }
-.desk-name { font-weight:700; font-size:15px; margin-bottom:2px; }
-.desk-role { font-size:12px; color: var(--accent); font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
-.desk-task { font-size:13px; color: var(--dim); line-height:1.4; }
-.desk-task.active-task { color: var(--text); }
-.desk-computer { margin-top:12px; background: var(--bg); border-radius:8px; padding:8px 12px; font-family: 'SF Mono', 'Fira Code', monospace; font-size:11px; color: var(--accent); border:1px solid var(--border); min-height:40px; overflow:hidden; }
-.dept-label { grid-column: 1/-1; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:2px; color: var(--dim); padding:12px 0 0; border-top:1px solid var(--border); margin-top:8px; }
-.dept-label:first-child { border:none; margin:0; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      padding-bottom: calc(var(--nav-h) + var(--safe-b) + 16px);
+      -webkit-font-smoothing: antialiased;
+    }
 
-/* CALENDAR */
-.cal-grid { display:grid; grid-template-columns: repeat(7, 1fr); gap:2px; }
-.cal-header { text-align:center; font-size:11px; font-weight:700; color: var(--dim); text-transform:uppercase; padding:8px; }
-.cal-day { background: var(--surface); border:1px solid var(--border); border-radius:8px; min-height:100px; padding:8px; font-size:12px; }
-.cal-day.today { border-color: var(--accent); }
-.cal-day-num { font-weight:700; margin-bottom:6px; font-size:13px; }
-.cal-day.today .cal-day-num { color: var(--accent); }
-.cal-event { background: rgba(0,212,170,.12); border-left:2px solid var(--accent); padding:2px 6px; margin-bottom:3px; border-radius:0 4px 4px 0; font-size:11px; line-height:1.3; cursor:default; }
-.cal-event.cron { border-left-color: var(--purple); background: rgba(139,92,246,.12); }
-.cal-event.task { border-left-color: var(--warning); background: rgba(245,158,11,.12); }
-.cal-controls { display:flex; align-items:center; gap:16px; margin-bottom:16px; }
-.cal-controls button { background: var(--surface); border:1px solid var(--border); color: var(--text); padding:6px 14px; border-radius:6px; cursor:pointer; }
-.cal-controls button:hover { border-color: var(--accent); }
-.cal-month { font-size:18px; font-weight:700; }
-.cal-legend { display:flex; gap:16px; margin-bottom:16px; }
-.cal-legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color: var(--dim); }
-.cal-legend-dot { width:10px; height:10px; border-radius:3px; }
+    /* ── AMBIENT BACKGROUND ── */
+    .bg-canvas {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+    }
+    .orb {
+      position: absolute; border-radius: 50%; filter: blur(90px);
+      animation-timing-function: ease-in-out;
+      animation-iteration-count: infinite;
+      animation-direction: alternate;
+    }
+    .orb-1 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(0,212,255,0.07) 0%, transparent 70%);
+      top: -150px; right: -100px;
+      animation: orbFloat1 16s infinite alternate ease-in-out;
+    }
+    .orb-2 {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(168,85,247,0.05) 0%, transparent 70%);
+      bottom: 100px; left: -120px;
+      animation: orbFloat2 20s infinite alternate ease-in-out;
+    }
+    .orb-3 {
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(0,230,118,0.04) 0%, transparent 70%);
+      top: 45%; right: 20%;
+      animation: orbFloat3 24s infinite alternate ease-in-out;
+    }
+    @keyframes orbFloat1 { from { transform: translate(0,0) scale(1); } to { transform: translate(-40px,30px) scale(1.08); } }
+    @keyframes orbFloat2 { from { transform: translate(0,0) scale(1); } to { transform: translate(30px,-40px) scale(1.05); } }
+    @keyframes orbFloat3 { from { transform: translate(0,0) scale(1); } to { transform: translate(-20px,20px) scale(0.92); } }
 
-/* MEMORY */
-.memory-search { width:100%; padding:14px 20px; background: var(--surface); border:1px solid var(--border); border-radius:12px; color: var(--text); font-size:15px; margin-bottom:20px; outline:none; transition: border .2s; }
-.memory-search:focus { border-color: var(--accent); }
-.memory-search::placeholder { color: var(--dim); }
-.memory-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(340px,1fr)); gap:16px; }
-.memory-card { background: var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; cursor:pointer; transition: all .2s; }
-.memory-card:hover { border-color: var(--accent); transform:translateY(-1px); }
-.memory-card-title { font-weight:700; font-size:15px; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
-.memory-card-source { font-size:11px; color: var(--dim); margin-bottom:8px; }
-.memory-card-body { font-size:13px; color: var(--dim); line-height:1.5; max-height:120px; overflow:hidden; }
-.memory-card-body strong { color: var(--text); }
-.memory-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:200; align-items:center; justify-content:center; padding:24px; }
-.memory-modal.open { display:flex; }
-.memory-modal-content { background: var(--surface); border:1px solid var(--border); border-radius:16px; padding:32px; max-width:700px; width:100%; max-height:80vh; overflow-y:auto; }
-.memory-modal-content h2 { margin-bottom:16px; }
-.memory-modal-content pre { background: var(--bg); padding:16px; border-radius:8px; font-size:13px; line-height:1.6; white-space:pre-wrap; overflow-x:auto; }
-.memory-modal-close { float:right; background:none; border:none; color:var(--dim); font-size:24px; cursor:pointer; }
+    /* ── HEADER ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      padding: calc(var(--safe-t) + 14px) 20px 14px;
+      background: rgba(6,9,15,0.72);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px;
+    }
+    .hdr-logo {
+      font-size: 1.1rem; font-weight: 900; letter-spacing: 0.08em;
+      color: var(--accent); text-shadow: 0 0 20px var(--accent-glow);
+      flex-shrink: 0; line-height: 1;
+    }
+    .hdr-center {
+      flex: 1; text-align: center; min-width: 0;
+    }
+    .hdr-greeting {
+      font-size: 0.82rem; font-weight: 600; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .hdr-date {
+      font-size: 0.68rem; font-weight: 400; color: var(--text-dim); margin-top: 1px;
+    }
+    .hdr-right {
+      display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    }
+    .gold-badge {
+      font-size: 0.68rem; font-weight: 800; letter-spacing: 0.04em;
+      background: linear-gradient(135deg, #F6C90E, #D4A800);
+      color: #0a0800; padding: 5px 10px; border-radius: 20px;
+      cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+      white-space: nowrap; line-height: 1;
+      box-shadow: 0 0 0 rgba(246,201,14,0);
+    }
+    .gold-badge:active { transform: scale(0.94); }
+    .gold-badge:hover { box-shadow: 0 0 16px rgba(246,201,14,0.4); }
+    .hdr-icon {
+      font-size: 1.1rem; cursor: default; user-select: none; line-height: 1;
+    }
 
-/* TASK BOARD */
-.board { display:grid; grid-template-columns: repeat(4,1fr); gap:16px; }
-.board-col { background: var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; min-height:400px; }
-.board-col-title { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; }
-.board-col-count { background: var(--surface2); padding:2px 8px; border-radius:10px; font-size:11px; color: var(--dim); }
-.task-card { background: var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:10px; cursor:pointer; transition: all .2s; }
-.task-card:hover { border-color: var(--accent); }
-.task-card-title { font-size:13px; font-weight:600; margin-bottom:6px; }
-.task-card-meta { display:flex; align-items:center; gap:8px; font-size:11px; color: var(--dim); }
-.task-card-assignee { display:inline-flex; align-items:center; gap:4px; background: var(--bg); padding:2px 8px; border-radius:10px; }
-.task-card-priority { padding:2px 8px; border-radius:10px; font-size:10px; font-weight:700; text-transform:uppercase; }
-.task-card-priority.high { background: rgba(239,68,68,.15); color: var(--danger); }
-.task-card-priority.medium { background: rgba(245,158,11,.15); color: var(--warning); }
-.task-card-priority.low { background: rgba(100,116,139,.15); color: var(--dim); }
-.add-task-btn { width:100%; padding:8px; background: none; border:1px dashed var(--border); border-radius:8px; color: var(--dim); cursor:pointer; font-size:12px; margin-top:8px; }
-.add-task-btn:hover { border-color: var(--accent); color: var(--accent); }
+    /* ── SCROLL CONTAINER ── */
+    .page-content {
+      position: relative; z-index: 1;
+      max-width: 680px; margin: 0 auto;
+    }
 
-/* STATS BAR */
-.stats-bar { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:12px; margin-bottom:24px; }
-.stat-card { background: var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; }
-.stat-label { font-size:11px; color: var(--dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
-.stat-value { font-size:28px; font-weight:800; }
-.stat-value .unit { font-size:14px; color: var(--dim); }
+    /* ── TAB SYSTEM ── */
+    .tab-pane { display: none; padding: 16px 16px 8px; }
+    .tab-pane.active { display: block; }
 
-/* IDEAS */
-.ideas-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(340px,1fr)); gap:16px; }
-.idea-card { background: var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; transition: all .2s; }
-.idea-card:hover { border-color: var(--accent); transform:translateY(-1px); }
-.idea-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.idea-title { font-weight:700; font-size:16px; display:flex; align-items:center; gap:8px; }
-.idea-status { padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; text-transform:uppercase; }
-.idea-status.active { background:rgba(16,185,129,.15); color:var(--success); }
-.idea-status.planning { background:rgba(6,182,212,.15); color:var(--accent2); }
-.idea-status.idea { background:rgba(139,92,246,.15); color:var(--purple); }
-.idea-status.hold { background:rgba(245,158,11,.15); color:var(--warning); }
-.idea-status.launched { background:rgba(0,212,170,.15); color:var(--accent); }
-.idea-desc { font-size:13px; color:var(--dim); line-height:1.5; margin-bottom:12px; }
-.idea-meta { display:flex; flex-wrap:wrap; gap:8px; }
-.idea-tag { background:var(--bg); padding:3px 10px; border-radius:8px; font-size:11px; color:var(--dim); }
-.idea-revenue { color:var(--accent); font-weight:700; }
-.idea-date { font-size:11px; color:var(--dim); margin-top:8px; }
+    /* ── BOTTOM NAV ── */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+      height: calc(var(--nav-h) + var(--safe-b));
+      padding-bottom: var(--safe-b);
+      background: rgba(6,9,15,0.88);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border-top: 1px solid var(--border);
+      display: flex; align-items: flex-start;
+    }
+    .nav-items {
+      display: flex; flex: 1; height: var(--nav-h); align-items: center;
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 4px;
+      height: 100%; cursor: pointer; border: none; background: none;
+      color: var(--text-muted); transition: color 0.2s;
+      position: relative; -webkit-tap-highlight-color: transparent;
+      padding: 0; user-select: none;
+    }
+    .nav-item.active { color: var(--accent); }
+    .nav-item.active::before {
+      content: ''; position: absolute; top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 32px; height: 2px;
+      background: var(--accent);
+      border-radius: 0 0 2px 2px;
+      box-shadow: 0 0 8px var(--accent-glow);
+    }
+    .nav-icon {
+      width: 22px; height: 22px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .nav-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .nav-label {
+      font-size: 0.6rem; font-weight: 600; letter-spacing: 0.04em;
+      text-transform: uppercase; line-height: 1;
+    }
+    @media (max-width: 380px) {
+      .nav-label { display: none; }
+      .nav-item { justify-content: center; padding-top: 4px; }
+    }
 
-/* RESPONSIVE */
-@media(max-width:768px) {
-  .board { grid-template-columns: 1fr 1fr; }
-  .office-floor { grid-template-columns: 1fr; }
-  .topbar-nav { overflow-x:auto; }
-}
-</style>
+    /* ── CARD BASE ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      overflow: hidden;
+      transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+    }
+    .card:active { transform: scale(0.985); }
+
+    /* ── SECTION SPACING ── */
+    .sec { margin-bottom: 16px; }
+    .sec-label {
+      font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--text-muted);
+      margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .sec-link {
+      font-size: 0.62rem; font-weight: 600; color: var(--accent);
+      background: none; border: none; cursor: pointer;
+      text-transform: none; letter-spacing: 0; padding: 0;
+    }
+
+    /* ── PRIORITY INPUT ── */
+    .priority-card {
+      background: var(--surface);
+      border: 1.5px solid rgba(246,201,14,0.2);
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      transition: border-color 0.2s;
+    }
+    .priority-card:focus-within {
+      border-color: rgba(246,201,14,0.6);
+      box-shadow: 0 0 20px rgba(246,201,14,0.07);
+    }
+    .priority-eyebrow {
+      font-size: 0.58rem; font-weight: 800; color: var(--gold);
+      text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 5px;
+    }
+    .priority-input {
+      width: 100%; background: none; border: none; outline: none;
+      color: var(--text); font-size: 0.9rem; font-family: inherit;
+      resize: none; line-height: 1.45; padding: 0;
+    }
+    .priority-input::placeholder { color: var(--text-muted); font-style: italic; }
+
+    /* ── NEXT UP CARD ── */
+    .next-up-card {
+      background: var(--surface);
+      border: 1.5px solid rgba(0,212,255,0.25);
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .next-up-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: linear-gradient(180deg, var(--accent), rgba(0,212,255,0.3));
+    }
+    .next-up-eyebrow {
+      font-size: 0.58rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--accent); margin-bottom: 6px;
+    }
+    .next-up-label {
+      font-size: 1rem; font-weight: 700; color: var(--text); line-height: 1.3;
+    }
+    .next-up-countdown {
+      font-size: 0.75rem; font-weight: 500; color: var(--text-dim); margin-top: 4px;
+    }
+    .next-up-countdown strong { color: var(--accent); font-weight: 700; }
+    .next-up-empty {
+      font-size: 0.82rem; color: var(--text-dim); font-style: italic;
+    }
+
+    /* ── STATS ROW ── */
+    .stats-row {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px; margin-bottom: 16px;
+    }
+    .stat-tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 12px 10px;
+      display: flex; flex-direction: column; gap: 3px;
+      cursor: pointer; transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+    }
+    .stat-tile:active { transform: scale(0.94); }
+    .stat-eyebrow {
+      font-size: 0.56rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text-muted);
+    }
+    .stat-value {
+      font-size: 1.15rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em;
+    }
+    .stat-sub {
+      font-size: 0.6rem; color: var(--text-muted); font-weight: 500;
+    }
+    .stat-bar-bg {
+      height: 3px; background: rgba(255,255,255,0.06); border-radius: 99px;
+      overflow: hidden; margin-top: 6px;
+    }
+    .stat-bar-fill {
+      height: 100%; border-radius: 99px;
+      transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* ── TOP TASKS (Home) ── */
+    .task-list { display: flex; flex-direction: column; gap: 8px; }
+    .task-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 12px 14px;
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+      user-select: none;
+    }
+    .task-item:active { transform: scale(0.975); background: var(--surface2); }
+    .task-item.done { opacity: 0.45; }
+    .task-cb {
+      width: 22px; height: 22px; border-radius: 7px;
+      border: 1.5px solid rgba(0,212,255,0.35);
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
+    }
+    .task-cb.checked {
+      background: var(--accent); border-color: var(--accent);
+      box-shadow: 0 0 10px rgba(0,212,255,0.4);
+    }
+    .task-cb .chk { display: none; font-size: 0.7rem; color: #06090F; font-weight: 900; }
+    .task-cb.checked .chk { display: block; }
+    .task-body { flex: 1; min-width: 0; }
+    .task-name { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+    .task-item.done .task-name { text-decoration: line-through; color: var(--text-muted); }
+    .task-meta-txt { font-size: 0.68rem; color: var(--text-muted); margin-top: 1px; }
+    .task-chevron {
+      font-size: 0.72rem; color: var(--text-muted);
+      transition: transform 0.22s; flex-shrink: 0;
+      padding: 2px 4px;
+    }
+    .task-chevron.open { transform: rotate(90deg); color: var(--accent); }
+
+    /* ── SUBTASKS ── */
+    .subtask-list {
+      border-top: 1px solid var(--border);
+      background: var(--surface3);
+    }
+    .subtask-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 14px 9px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s;
+    }
+    .subtask-item:last-child { border-bottom: none; }
+    .subtask-item:active { background: var(--surface2); }
+    .sub-cb {
+      width: 17px; height: 17px; border-radius: 5px;
+      border: 1.5px solid rgba(0,212,255,0.3);
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .sub-cb.checked { background: var(--accent); border-color: var(--accent); }
+    .sub-cb .chk { display: none; font-size: 0.58rem; color: #06090F; font-weight: 900; }
+    .sub-cb.checked .chk { display: block; }
+    .sub-label { font-size: 0.8rem; color: var(--text); flex: 1; line-height: 1.4; }
+    .subtask-item.done .sub-label { text-decoration: line-through; color: var(--text-muted); }
+    .sub-phone a { font-size: 0.75rem; color: var(--accent); text-decoration: none; }
+    .notes-toggle {
+      font-size: 0.65rem; color: var(--text-muted); cursor: pointer;
+      padding: 2px 6px; border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .notes-toggle:hover { color: var(--accent); background: var(--accent-dim); }
+    .notes-wrap {
+      display: none; padding: 8px 14px 10px 44px;
+      background: rgba(0,0,0,0.2); border-top: 1px solid var(--border);
+    }
+    .notes-wrap.open { display: block; }
+    .notes-wrap textarea {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-size: 0.78rem; padding: 7px 10px;
+      resize: none; font-family: inherit; outline: none; min-height: 52px;
+    }
+    .notes-wrap textarea:focus { border-color: var(--accent); }
+    .subtask-actions {
+      padding: 8px 14px 6px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .subtask-actions-label {
+      font-size: 0.6rem; color: var(--text-muted); font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .script-btn {
+      font-size: 0.65rem; font-weight: 700; color: var(--accent);
+      background: var(--accent-dim); border: 1px solid rgba(0,212,255,0.3);
+      padding: 4px 10px; border-radius: 6px; cursor: pointer;
+      transition: all 0.15s; letter-spacing: 0.02em;
+    }
+    .script-btn:hover { background: rgba(0,212,255,0.2); }
+
+    /* ── SCHEDULE STRIP ── */
+    .schedule-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden;
+    }
+    .sched-header {
+      padding: 12px 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .live-clock {
+      font-size: 1.4rem; font-weight: 800; color: var(--accent);
+      letter-spacing: 0.01em; line-height: 1;
+    }
+    .sched-next-name { font-size: 0.65rem; color: var(--text-muted); margin-top: 2px; }
+    .sched-countdown { font-size: 0.88rem; font-weight: 700; color: var(--warn); text-align: right; }
+    .sched-next-lbl { font-size: 0.6rem; color: var(--text-muted); text-align: right; margin-bottom: 2px; }
+    .sched-events { padding: 6px 0; }
+    .sched-evt {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 16px; border-left: 3px solid transparent;
+      transition: background 0.15s;
+    }
+    .sched-evt.past { opacity: 0.3; }
+    .sched-evt.current { background: rgba(0,212,255,0.06); border-left-color: var(--accent); }
+    .sched-evt.next { background: rgba(255,176,32,0.05); border-left-color: var(--warn); }
+    .sched-t {
+      font-size: 0.68rem; font-weight: 700; color: var(--text-muted); min-width: 54px;
+    }
+    .sched-evt.current .sched-t { color: var(--accent); }
+    .sched-evt.next .sched-t { color: var(--warn); }
+    .sched-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--text-muted); flex-shrink: 0;
+    }
+    .sched-evt.current .sched-dot { background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); }
+    .sched-evt.next .sched-dot { background: var(--warn); }
+    .sched-lbl { font-size: 0.8rem; font-weight: 500; color: var(--text); }
+    .sched-evt.current .sched-lbl { color: var(--accent); font-weight: 600; }
+    .sched-evt.next .sched-lbl { color: var(--warn); }
+    .sched-evt.past .sched-lbl { color: var(--text-muted); }
+    .sched-footer {
+      padding: 8px 16px 10px;
+      border-top: 1px solid var(--border);
+      display: flex; gap: 20px;
+    }
+    .sun-item { font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
+    .sun-item strong { color: var(--text-dim); font-weight: 600; }
+
+    /* ── INTEL CARD ── */
+    .intel-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+    .intel-source {
+      font-size: 0.58rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.12em; margin-bottom: 6px;
+    }
+    .intel-source.asrx { color: var(--accent); }
+    .intel-source.clearmeds { color: var(--green); }
+    .intel-source.dextorai { color: var(--purple); }
+    .intel-source.dexjar { color: var(--gold); }
+    .intel-headline { font-size: 0.85rem; font-weight: 600; color: var(--text); line-height: 1.45; margin-bottom: 5px; }
+    .intel-opportunity { font-size: 0.75rem; color: var(--text-dim); line-height: 1.45; }
+    .intel-time { font-size: 0.62rem; color: var(--text-muted); margin-top: 8px; }
+
+    /* ── REVENUE TRACKER ── */
+    .rev-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; cursor: pointer; user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .rev-header-left { display: flex; align-items: baseline; gap: 10px; }
+    .rev-header-label { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+    .rev-total { font-size: 1.3rem; font-weight: 800; color: var(--green); letter-spacing: -0.02em; }
+    .rev-header-chevron { font-size: 0.7rem; color: var(--text-muted); transition: transform 0.25s; }
+    .rev-header-chevron.open { transform: rotate(180deg); }
+    .rev-body { border-top: 1px solid var(--border); padding: 14px 16px; }
+    .rev-goal-bar-bg { height: 4px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; margin-bottom: 14px; }
+    .rev-goal-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--green), #00ff88); transition: width 0.6s; }
+    .rev-companies { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .rev-co {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 12px; cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .rev-co:hover { border-color: var(--border-hi); }
+    .rev-co:active { transform: scale(0.97); }
+    .rev-co-name { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 3px; }
+    .rev-co-amt { font-size: 1rem; font-weight: 800; color: var(--text); }
+    .rev-co-pipe { font-size: 0.65rem; color: var(--text-muted); margin-top: 1px; }
+    .rev-co-bar-bg { height: 3px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; margin-top: 7px; }
+    .rev-co-bar-fill { height: 100%; border-radius: 99px; transition: width 0.5s; }
+    .rev-edit-hint { font-size: 0.65rem; color: var(--text-muted); text-align: center; margin-top: 12px; cursor: pointer; opacity: 0.7; }
+
+    /* ── PIPELINE ── */
+    .pipeline-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+    .pipeline-cols { display: flex; gap: 10px; min-width: max-content; padding: 2px; }
+    .pipeline-col { width: 165px; }
+    .pipeline-col-hdr {
+      font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; padding: 5px 8px; border-radius: 7px;
+      margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .pipeline-col-hdr.cold   { background: rgba(100,116,139,0.15); color: #94a3b8; }
+    .pipeline-col-hdr.called { background: var(--accent-dim); color: var(--accent); }
+    .pipeline-col-hdr.hot    { background: rgba(255,176,32,0.12); color: var(--warn); }
+    .pipeline-col-hdr.closed { background: var(--green-dim); color: var(--green); }
+    .pipeline-count { background: rgba(255,255,255,0.1); padding: 1px 6px; border-radius: 99px; font-size: 0.65rem; }
+    .pipeline-cards { display: flex; flex-direction: column; gap: 6px; min-height: 40px; }
+    .pipeline-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 10px; font-size: 0.75rem;
+      cursor: grab; user-select: none; transition: opacity 0.15s;
+    }
+    .pipeline-card:active { cursor: grabbing; opacity: 0.65; }
+    .pc-name { font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .pc-meta { color: var(--text-muted); font-size: 0.68rem; }
+    .pc-val { font-size: 0.65rem; font-weight: 700; color: var(--green); margin-top: 3px; }
+    .pipe-add-btn {
+      font-size: 0.72rem; color: var(--text-muted); padding: 6px 8px;
+      background: var(--surface); border: 1px dashed var(--border);
+      border-radius: 6px; width: 100%; cursor: pointer; margin-top: 4px;
+      text-align: left; transition: color 0.15s, border-color 0.15s;
+    }
+    .pipe-add-btn:hover { color: var(--accent); border-color: rgba(0,212,255,0.3); }
+
+    /* ── INBOX ── */
+    .inbox-list { display: flex; flex-direction: column; gap: 8px; }
+    .inbox-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 14px;
+      display: flex; align-items: flex-start; gap: 10px;
+      transition: opacity 0.2s;
+    }
+    .inbox-item.read { opacity: 0.4; }
+    .inbox-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+    .inbox-dot.alert { background: var(--danger); box-shadow: 0 0 6px rgba(255,71,87,0.5); }
+    .inbox-dot.warn  { background: var(--warn); }
+    .inbox-dot.info  { background: var(--accent); }
+    .inbox-dot.done  { background: var(--green); }
+    .inbox-text { font-size: 0.8rem; color: var(--text); line-height: 1.5; flex: 1; }
+    .inbox-time { font-size: 0.65rem; color: var(--text-muted); margin-top: 2px; }
+    .inbox-dismiss {
+      background: none; border: none; color: var(--text-muted);
+      font-size: 0.82rem; cursor: pointer; padding: 0 2px; align-self: center;
+      transition: color 0.15s;
+    }
+    .inbox-dismiss:hover { color: var(--text); }
+
+    /* ── IN PROGRESS MEETINGS ── */
+    .meeting-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 14px;
+      display: flex; gap: 12px; align-items: flex-start; margin-bottom: 8px;
+    }
+    .meeting-status {
+      font-size: 0.62rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.06em; min-width: 52px; text-align: center; line-height: 1.6; padding-top: 1px;
+    }
+    .meeting-info-title { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+    .meeting-info-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+
+    /* ── BRAIN DUMP ── */
+    .brain-wrap {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px 16px;
+    }
+    .brain-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .brain-title { font-size: 0.72rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+    .brain-clear { font-size: 0.65rem; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: color 0.15s, background 0.15s; }
+    .brain-clear:hover { color: var(--danger); background: rgba(255,71,87,0.1); }
+    .brain-area {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 0.85rem;
+      padding: 11px 13px; resize: none; font-family: inherit; outline: none;
+      min-height: 96px; line-height: 1.6;
+    }
+    .brain-area:focus { border-color: var(--accent); }
+    .brain-area::placeholder { color: var(--text-muted); }
+    .brain-footer { font-size: 0.62rem; color: var(--text-muted); margin-top: 5px; text-align: right; }
+
+    /* ── QUICK ACTIONS ── */
+    .qa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .qa-btn {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 14px; font-size: 0.78rem;
+      font-weight: 600; color: var(--text-dim); cursor: pointer;
+      text-align: left; transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+      display: flex; align-items: center; gap: 8px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .qa-btn:active { transform: scale(0.95); background: var(--accent-dim); border-color: rgba(0,212,255,0.4); color: var(--accent); }
+
+    /* ── QUICK LINKS ── */
+    .links-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .link-btn {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 7px 13px; font-size: 0.75rem;
+      font-weight: 600; color: var(--text-dim); text-decoration: none;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .link-btn:active { background: var(--accent-dim); border-color: rgba(0,212,255,0.4); color: var(--accent); transform: scale(0.96); }
+
+    /* ── PROJECTS ── */
+    .project-list { display: flex; flex-direction: column; gap: 9px; }
+    .project-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .project-left { flex: 1; min-width: 0; }
+    .project-name { font-size: 0.88rem; font-weight: 700; color: var(--text); }
+    .project-desc { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+    .project-btns { display: flex; gap: 4px; }
+    .ps-btn {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; padding: 5px 8px; font-size: 0.72rem;
+      cursor: pointer; color: var(--text-dim); transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ps-btn:active { background: var(--surface2); }
+    .project-badge {
+      font-size: 0.65rem; font-weight: 700; white-space: nowrap;
+      padding: 3px 9px; border-radius: 20px;
+      background: var(--accent-dim); color: var(--accent);
+    }
+    .project-badge.paused { background: var(--gold-dim); color: var(--gold); }
+    .project-badge.done { background: var(--green-dim); color: var(--green); }
+
+    /* ── PROGRESS BAR (Tasks tab) ── */
+    .progress-wrap {
+      padding: 12px 16px 0;
+    }
+    .progress-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+    .progress-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+    .progress-count { font-size: 0.8rem; font-weight: 700; color: var(--accent); }
+    .progress-bar-bg { height: 4px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #0099cc); border-radius: 99px; transition: width 0.4s cubic-bezier(0.4,0,0.2,1); box-shadow: 0 0 10px var(--accent-glow); }
+
+    /* ── 2048 GAME ── */
+    .game-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .game-score-box { background: var(--surface2); border-radius: 8px; padding: 6px 14px; text-align: center; min-width: 60px; }
+    .game-score-lbl { font-size: 0.55rem; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; }
+    .game-score-val { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+    .game-new-btn { margin-left: auto; background: var(--accent); color: #06090F; border: none; border-radius: 8px; padding: 7px 16px; font-size: 0.78rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .game-grid {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 8px;
+      background: rgba(0,0,0,0.4); border-radius: 12px; padding: 10px;
+      user-select: none; touch-action: none;
+    }
+    .g-cell {
+      aspect-ratio: 1; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1.15rem; transition: background 0.1s, color 0.1s;
+      background: rgba(255,255,255,0.04);
+    }
+    .g-cell[data-v="2"]    { background: #1e3a5f; color: #cdd6f4; }
+    .g-cell[data-v="4"]    { background: #1a4a60; color: #89dceb; }
+    .g-cell[data-v="8"]    { background: #1b5e74; color: #fff; }
+    .g-cell[data-v="16"]   { background: #1a7a6e; color: #fff; }
+    .g-cell[data-v="32"]   { background: #c0582a; color: #fff; font-size: 1rem; }
+    .g-cell[data-v="64"]   { background: #b83c3c; color: #fff; font-size: 1rem; }
+    .g-cell[data-v="128"]  { background: #7b35a0; color: #fff; font-size: 0.9rem; }
+    .g-cell[data-v="256"]  { background: #6a2d8e; color: #fff; font-size: 0.9rem; }
+    .g-cell[data-v="512"]  { background: #1f6fa8; color: #fff; font-size: 0.85rem; }
+    .g-cell[data-v="1024"] { background: #1a9c8c; color: #fff; font-size: 0.78rem; }
+    .g-cell[data-v="2048"] { background: #d4a800; color: #000; font-size: 0.75rem; box-shadow: 0 0 20px rgba(246,201,14,0.6); }
+    .game-hint { font-size: 0.62rem; color: var(--text-muted); text-align: center; margin-top: 8px; }
+
+    /* ── FLOATING DEX BUTTON ── */
+    .dex-fab {
+      position: fixed;
+      bottom: calc(var(--nav-h) + var(--safe-b) + 14px);
+      right: 16px; z-index: 300;
+      width: 50px; height: 50px; border-radius: 50%;
+      background: linear-gradient(135deg, #00D4FF, #0099cc);
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 1.15rem; color: #06090F;
+      box-shadow: 0 4px 24px rgba(0,212,255,0.5);
+      transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .dex-fab:hover { transform: scale(1.08); box-shadow: 0 6px 30px rgba(0,212,255,0.65); }
+    .dex-fab:active { transform: scale(0.94); }
+    .dex-fab.has-new::after {
+      content: ''; position: absolute; top: 5px; right: 5px;
+      width: 10px; height: 10px; background: var(--danger);
+      border-radius: 50%; border: 2px solid var(--bg);
+      animation: pulseDot 1.5s infinite;
+    }
+    @keyframes pulseDot { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.35);opacity:.75} }
+
+    /* ── CHAT PANEL ── */
+    .chat-panel {
+      position: fixed; bottom: 0; right: 0;
+      width: 100%; max-width: 420px; height: 0;
+      z-index: 400;
+      transition: height 0.3s cubic-bezier(0.4,0,0.2,1);
+      border-radius: 18px 18px 0 0;
+      background: rgba(6,9,15,0.96);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border-hi); border-bottom: none;
+      box-shadow: 0 -8px 40px rgba(0,0,0,0.8);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .chat-panel.open { height: 440px; }
+    @media (max-width: 500px) {
+      .chat-panel { max-width: 100%; }
+      .chat-panel.open { height: 100dvh; height: 100vh; border-radius: 0; border: none; }
+    }
+    .chat-hdr {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+      flex-shrink: 0;
+    }
+    .chat-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: linear-gradient(135deg, #00D4FF, #0099cc);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 0.9rem; color: #06090F;
+      flex-shrink: 0;
+    }
+    .chat-hdr-name { font-size: 0.88rem; font-weight: 700; color: var(--text); }
+    .chat-hdr-status { font-size: 0.65rem; color: var(--green); display: flex; align-items: center; gap: 4px; }
+    .chat-hdr-status::before { content: ''; width: 5px; height: 5px; background: var(--green); border-radius: 50%; display: inline-block; }
+    .chat-close { background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; padding: 2px 6px; margin-left: auto; }
+    .chat-msgs {
+      flex: 1; overflow-y: auto; padding: 14px 14px 0;
+      display: flex; flex-direction: column; gap: 10px;
+      min-height: 0; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+    }
+    .chat-msg { display: flex; gap: 7px; align-items: flex-end; max-width: 86%; }
+    .chat-msg.from-dex { align-self: flex-start; }
+    .chat-msg.from-rich { align-self: flex-end; flex-direction: row-reverse; }
+    .chat-bubble { padding: 9px 13px; border-radius: 16px; font-size: 0.82rem; line-height: 1.5; color: var(--text); }
+    .from-dex .chat-bubble { background: var(--surface2); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .from-rich .chat-bubble { background: linear-gradient(135deg, rgba(0,212,255,.22), rgba(0,153,204,.18)); border: 1px solid rgba(0,212,255,.3); border-bottom-right-radius: 4px; }
+    .chat-msg-time { font-size: 0.58rem; color: var(--text-muted); margin-bottom: 2px; }
+    .chat-msg-avatar { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg,#00D4FF,#0099cc); display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 900; color: #06090F; flex-shrink: 0; }
+    .chat-input-bar { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0; }
+    .chat-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; color: var(--text); font-size: 16px; padding: 9px 14px; font-family: inherit; outline: none; resize: none; max-height: 80px; overflow-y: auto; line-height: 1.4; }
+    .chat-input:focus { border-color: var(--accent); }
+    .chat-input::placeholder { color: var(--text-muted); }
+    .chat-send { width: 38px; height: 38px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+    .chat-send svg { width: 16px; height: 16px; fill: #06090F; }
+    .chat-send:hover { transform: scale(1.1); box-shadow: 0 2px 14px rgba(0,212,255,0.45); }
+    .chat-send:disabled { background: rgba(255,255,255,0.1); cursor: not-allowed; transform: none; }
+    .chat-typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+    .chat-typing span { width: 6px; height: 6px; background: var(--text-muted); border-radius: 50%; animation: typingDot 1.2s infinite; }
+    .chat-typing span:nth-child(2){animation-delay:.2s;} .chat-typing span:nth-child(3){animation-delay:.4s;}
+    @keyframes typingDot { 0%,100%{transform:translateY(0);opacity:.4} 50%{transform:translateY(-5px);opacity:1} }
+
+    /* ── MODALS ── */
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.88); z-index: 900;
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+      background: rgba(12,16,26,0.98);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-hi);
+      border-radius: 18px; max-width: 500px; width: 100%;
+      padding: 22px; max-height: 88vh; overflow-y: auto;
+    }
+    .modal-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .modal-title { font-size: 1rem; font-weight: 800; color: var(--accent); }
+    .modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; padding: 0; line-height: 1; }
+
+    /* Streak modal */
+    .streak-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 950; align-items: center; justify-content: center; padding: 20px; }
+    .streak-backdrop.open { display: flex; }
+    .streak-box { background: rgba(10,12,20,0.98); border: 1px solid rgba(246,201,14,0.3); border-radius: 20px; max-width: 380px; width: 100%; padding: 22px 20px; }
+    .streak-hdr { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+    .streak-title { font-size: 0.9rem; font-weight: 800; color: var(--gold); }
+    .streak-period { font-size: 0.65rem; color: var(--text-dim); margin-top: 2px; }
+    .streak-close { background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; line-height: 1; padding: 0; }
+    .streak-hero { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 18px; padding: 14px; background: var(--gold-dim); border-radius: 12px; border: 1px solid rgba(246,201,14,0.15); }
+    .streak-stat { text-align: center; }
+    .streak-num { font-size: 2rem; font-weight: 900; color: var(--gold); line-height: 1; }
+    .streak-lbl { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px; }
+    .streak-divider { width: 1px; height: 38px; background: rgba(246,201,14,0.2); }
+    .streak-fire { font-size: 1.8rem; }
+    .streak-dow { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; margin-bottom: 4px; }
+    .streak-dow span { text-align: center; font-size: 0.58rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 2px 0; }
+    .streak-cal { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+    .streak-day { aspect-ratio: 1; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.62rem; font-weight: 700; cursor: pointer; transition: all 0.15s; border: 1.5px solid transparent; }
+    .streak-day-n { line-height: 1; }
+    .streak-day-chk { font-size: 0.5rem; line-height: 1; }
+    .streak-day.done { background: linear-gradient(135deg,#F6C90E,#D4A800); color: #0a0800; border-color: var(--gold); }
+    .streak-day.today { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .streak-day.today.done { background: linear-gradient(135deg,#F6C90E,#D4A800); color: #0a0800; border-color: var(--gold); }
+    .streak-day.missed { background: rgba(255,255,255,0.04); color: var(--text-muted); }
+    .streak-day.future { opacity: 0.2; color: var(--text-muted); cursor: default; pointer-events: none; }
+    .streak-day.empty { pointer-events: none; }
+    .streak-manual { margin-top: 16px; text-align: center; }
+    .streak-manual-btn { background: linear-gradient(135deg,#F6C90E,#D4A800); color: #0a0800; border: none; border-radius: 10px; padding: 9px 20px; font-size: 0.78rem; font-weight: 800; cursor: pointer; letter-spacing: 0.03em; transition: transform 0.1s; font-family: inherit; }
+    .streak-manual-btn:hover { transform: scale(1.03); }
+    .streak-manual-btn.already { background: rgba(255,255,255,0.08); color: var(--text-muted); cursor: default; transform: none; }
+
+    /* Revenue modal */
+    .rev-modal-bd { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 910; align-items: center; justify-content: center; padding: 20px; }
+    .rev-modal-bd.open { display: flex; }
+    .rev-modal { background: rgba(10,12,20,0.98); border: 1px solid rgba(0,212,255,0.3); border-radius: 18px; padding: 22px; width: calc(100% - 40px); max-width: 460px; max-height: 90vh; overflow-y: auto; }
+    .rev-modal h3 { font-size: 1rem; font-weight: 800; color: var(--accent); margin-bottom: 16px; }
+    .rev-field { margin-bottom: 12px; }
+    .rev-field label { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 5px; }
+    .rev-field input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.9rem; padding: 9px 12px; font-family: inherit; outline: none; }
+    .rev-field input:focus { border-color: var(--accent); }
+    .rev-modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+    .rev-save { flex: 1; background: var(--accent); color: #06090F; font-weight: 700; font-size: 0.88rem; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; }
+    .rev-cancel { padding: 10px 16px; background: var(--surface2); color: var(--text-dim); font-size: 0.85rem; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; }
+
+    /* Script modal */
+    .script-section { font-size: 0.68rem; font-weight: 700; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; margin-top: 2px; }
+    .script-block { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 12px; margin-bottom: 14px; font-size: 0.85rem; color: var(--text); line-height: 1.7; }
+
+    /* QA modal */
+    .qa-modal-scroll { overflow-y: auto; }
+
+    /* Shared: close modal on ESC */
+    body.modal-open { overflow: hidden; }
+
+    /* Footer in More tab */
+    .more-footer {
+      text-align: center; padding: 20px 16px 8px;
+      font-size: 0.68rem; color: var(--text-muted);
+    }
+    .more-footer span { color: var(--accent); }
+    .refresh-btn { background: none; border: none; color: var(--text-muted); font-size: 0.65rem; cursor: pointer; opacity: 0.5; text-decoration: underline; padding: 0; }
+  </style>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="topbar-logo">⚡ DEX <span>MISSION CONTROL</span></div>
-  <div class="topbar-nav">
-    <button class="active" onclick="showScreen('team')">👥 Team</button>
-    <button onclick="showScreen('tasks')">📋 Tasks</button>
-    <button onclick="showScreen('calendar')">📅 Calendar</button>
-    <button onclick="showScreen('memory')">🧠 Memory</button>
-    <button onclick="showScreen('ideas')">💡 Ideas</button>
+  <!-- AMBIENT BACKGROUND -->
+  <div class="bg-canvas" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
   </div>
-  <div class="topbar-time" id="clock"></div>
-</div>
 
-<!-- ==================== TEAM SCREEN ==================== -->
-<div class="screen active" id="screen-team">
-  <div class="screen-title">👥 Digital Office</div>
-  <div class="stats-bar">
-    <div class="stat-card"><div class="stat-label">Team Members</div><div class="stat-value">11</div></div>
-    <div class="stat-card"><div class="stat-label">Active Now</div><div class="stat-value" style="color:var(--success)">0</div></div>
-    <div class="stat-card"><div class="stat-label">Tasks In Progress</div><div class="stat-value" style="color:var(--warning)">0</div></div>
-    <div class="stat-card"><div class="stat-label">Completed Today</div><div class="stat-value" style="color:var(--accent)">0</div></div>
-  </div>
-  <div class="office-floor" id="officeFloor"></div>
-</div>
+  <!-- HEADER -->
+  <header>
+    <div class="hdr-logo">DEXTOR</div>
+    <div class="hdr-center">
+      <div class="hdr-greeting" id="hdrGreeting">Good morning, Rich</div>
+      <div class="hdr-date" id="hdrDate"></div>
+    </div>
+    <div class="hdr-right">
+      <span class="gold-badge" id="goldBadge" onclick="openStreak()" title="Gold Plan Tracker"></span>
+      <span class="hdr-icon" id="hdrIcon" aria-hidden="true">☀️</span>
+    </div>
+  </header>
 
-<!-- ==================== TASKS SCREEN ==================== -->
-<div class="screen" id="screen-tasks">
-  <div class="screen-title">📋 Task Board</div>
-  <div class="stats-bar">
-    <div class="stat-card"><div class="stat-label">Backlog</div><div class="stat-value" id="stat-backlog">0</div></div>
-    <div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-value" style="color:var(--warning)" id="stat-progress">0</div></div>
-    <div class="stat-card"><div class="stat-label">In Review</div><div class="stat-value" style="color:var(--purple)" id="stat-review">0</div></div>
-    <div class="stat-card"><div class="stat-label">Done</div><div class="stat-value" style="color:var(--success)" id="stat-done">0</div></div>
-  </div>
-  <div class="board" id="taskBoard"></div>
-</div>
+  <!-- PAGE CONTENT -->
+  <div class="page-content">
 
-<!-- ==================== CALENDAR SCREEN ==================== -->
-<div class="screen" id="screen-calendar">
-  <div class="screen-title">📅 Calendar</div>
-  <div class="cal-controls">
-    <button onclick="changeMonth(-1)">← Prev</button>
-    <div class="cal-month" id="calMonth"></div>
-    <button onclick="changeMonth(1)">Next →</button>
-  </div>
-  <div class="cal-legend">
-    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--accent)"></div> Scheduled Task</div>
-    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--purple)"></div> Cron Job</div>
-    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--warning)"></div> Deadline</div>
-  </div>
-  <div class="cal-grid" id="calGrid"></div>
-</div>
+    <!-- ══════════════ HOME TAB ══════════════ -->
+    <div id="tab-home" class="tab-pane active">
 
-<!-- ==================== MEMORY SCREEN ==================== -->
-<div class="screen" id="screen-memory">
-  <div class="screen-title">🧠 Memory Bank</div>
-  <input type="text" class="memory-search" id="memorySearch" placeholder="🔍 Search memories... (people, projects, decisions, dates)" oninput="filterMemories()">
-  <div class="memory-grid" id="memoryGrid"></div>
-</div>
+      <!-- Priority -->
+      <div class="priority-card" style="margin-top:12px;">
+        <div class="priority-eyebrow">Today's #1 Priority</div>
+        <textarea class="priority-input" id="priorityInput" rows="1"
+          placeholder="What's the ONE thing that matters most today?"></textarea>
+      </div>
 
-<!-- ==================== IDEAS SCREEN ==================== -->
-<div class="screen" id="screen-ideas">
-  <div class="screen-title">💡 Ideas & Projects</div>
-  <div class="stats-bar">
-    <div class="stat-card"><div class="stat-label">Total Ideas</div><div class="stat-value" id="stat-ideas">0</div></div>
-    <div class="stat-card"><div class="stat-label">Active Projects</div><div class="stat-value" style="color:var(--success)" id="stat-active-proj">0</div></div>
-    <div class="stat-card"><div class="stat-label">On Hold</div><div class="stat-value" style="color:var(--warning)" id="stat-hold-proj">0</div></div>
-    <div class="stat-card"><div class="stat-label">Revenue Potential</div><div class="stat-value" style="color:var(--accent)" id="stat-rev">$0</div></div>
-  </div>
-  <div class="ideas-grid" id="ideasGrid"></div>
-</div>
+      <!-- Next Up -->
+      <div class="next-up-card" id="nextUpCard">
+        <div class="next-up-eyebrow">Next Up</div>
+        <div class="next-up-label" id="nextUpLabel">Loading schedule…</div>
+        <div class="next-up-countdown" id="nextUpCountdown"></div>
+      </div>
 
-<!-- MEMORY MODAL -->
-<div class="memory-modal" id="memoryModal" onclick="if(event.target===this)closeMemory()">
-  <div class="memory-modal-content">
-    <button class="memory-modal-close" onclick="closeMemory()">×</button>
-    <h2 id="memoryModalTitle"></h2>
-    <div class="memory-card-source" id="memoryModalSource"></div>
-    <pre id="memoryModalBody"></pre>
-  </div>
-</div>
-
-<script>
-// ========== TEAM DATA ==========
-const team = [
-  { dept: "Leadership", members: [
-    { name:"Dex", role:"Lead Agent", avatar:"⚡", color:"#00d4aa", status:"working", task:"Building Mission Control + managing sub-agents", screen:"mission-control/index.html — building UI" },
-  ]},
-  { dept: "Development", members: [
-    { name:"Forge", role:"Full-Stack Developer", avatar:"🔨", color:"#06b6d4", status:"idle", task:"Builds websites, apps, APIs, and tools", screen:"Waiting for assignment..." },
-    { name:"Bolt", role:"Infrastructure Engineer", avatar:"⚙️", color:"#8b5cf6", status:"idle", task:"Server setup, deployment, DevOps, DNS", screen:"Waiting for assignment..." },
-    { name:"Circuit", role:"Automation Engineer", avatar:"🔌", color:"#f59e0b", status:"idle", task:"Integrations, workflows, data pipelines", screen:"Waiting for assignment..." },
-  ]},
-  { dept: "Creative", members: [
-    { name:"Pixel", role:"UI/UX Designer", avatar:"🎨", color:"#ec4899", status:"idle", task:"Website designs, mockups, landing pages", screen:"Waiting for assignment..." },
-    { name:"Quill", role:"Content Writer", avatar:"✍️", color:"#10b981", status:"idle", task:"Blog posts, website copy, documentation", screen:"Waiting for assignment..." },
-    { name:"Echo", role:"Outreach Specialist", avatar:"📣", color:"#ef4444", status:"idle", task:"Cold emails, sales copy, follow-up sequences", screen:"Waiting for assignment..." },
-  ]},
-  { dept: "Research & Strategy", members: [
-    { name:"Scout", role:"Market Researcher", avatar:"🔍", color:"#6366f1", status:"idle", task:"Competitor analysis, market research, pricing", screen:"Waiting for assignment..." },
-  ]},
-  { dept: "Trading Bots", members: [
-    { name:"SkimTrady", role:"Market Analyst Bot", avatar:"📈", color:"#10b981", status:"working", task:"Scanning markets + posting trade signals", screen:"Running as daemon — port active" },
-    { name:"Pmac", role:"Polymarket Bot", avatar:"🎲", color:"#f59e0b", status:"working", task:"Tracking prediction markets + posting to #polymarket", screen:"Running as daemon — Discord bot active" },
-    { name:"AskPope", role:"Discord Bot", avatar:"🤖", color:"#8b5cf6", status:"working", task:"Community engagement bot", screen:"Running as daemon — Discord bot active" },
-  ]},
-];
-
-function renderOffice() {
-  const floor = document.getElementById('officeFloor');
-  floor.innerHTML = '';
-  let activeCount = 0;
-  team.forEach(dept => {
-    floor.innerHTML += `<div class="dept-label">${dept.dept}</div>`;
-    dept.members.forEach(m => {
-      if (m.status === 'working' || m.status === 'busy') activeCount++;
-      floor.innerHTML += `
-        <div class="desk">
-          <div class="desk-status ${m.status}"></div>
-          <div class="desk-avatar" style="background:${m.color}22;color:${m.color}">${m.avatar}</div>
-          <div class="desk-name">${m.name}</div>
-          <div class="desk-role">${m.role}</div>
-          <div class="desk-task ${m.status==='working'?'active-task':''}">${m.task}</div>
-          <div class="desk-computer">${m.screen}</div>
-        </div>`;
-    });
-  });
-  // update stats
-  document.querySelectorAll('.stats-bar .stat-value')[1].textContent = activeCount;
-}
-
-// ========== TASK BOARD ==========
-const tasks = [
-  { id:1, title:"Build ASRX.health website redesign", status:"backlog", assignee:"Dex", priority:"high", project:"ASRX" },
-  { id:2, title:"iMessage Farm architecture doc", status:"progress", assignee:"Dex", priority:"high", project:"Dextor AI" },
-  { id:3, title:"iMessage Farm shopping list", status:"progress", assignee:"Dex", priority:"high", project:"Dextor AI" },
-  { id:4, title:"ASRX site — TrimRx/AlgoRx hybrid redesign", status:"backlog", assignee:"Dex", priority:"high", project:"ASRX" },
-  { id:5, title:"Gemini fallback model — configured ✓", status:"done", assignee:"Dex", priority:"medium", project:"Infrastructure" },
-  { id:6, title:"Ollama local fallback — configured ✓", status:"done", assignee:"Dex", priority:"medium", project:"Infrastructure" },
-  { id:7, title:"Mission Control — build UI", status:"progress", assignee:"Dex", priority:"high", project:"Infrastructure" },
-  { id:8, title:"OpenLoop Health outreach email", status:"backlog", assignee:"Rich", priority:"high", project:"ASRX" },
-  { id:9, title:"Sendblue competitor research", status:"done", assignee:"Dex", priority:"medium", project:"Dextor AI" },
-  { id:10, title:"Dextor AI Instantly campaign — monitor", status:"backlog", assignee:"Dex", priority:"medium", project:"Dextor AI" },
-];
-
-const columns = [
-  { key:"backlog", label:"📥 Backlog", color:"var(--dim)" },
-  { key:"progress", label:"🔨 In Progress", color:"var(--warning)" },
-  { key:"review", label:"👀 In Review", color:"var(--purple)" },
-  { key:"done", label:"✅ Done", color:"var(--success)" },
-];
-
-function renderTasks() {
-  const board = document.getElementById('taskBoard');
-  board.innerHTML = '';
-  columns.forEach(col => {
-    const colTasks = tasks.filter(t => t.status === col.key);
-    const statEl = document.getElementById(`stat-${col.key}`);
-    if(statEl) statEl.textContent = colTasks.length;
-    let html = `<div class="board-col">
-      <div class="board-col-title">${col.label} <span class="board-col-count">${colTasks.length}</span></div>`;
-    colTasks.forEach(t => {
-      html += `<div class="task-card">
-        <div class="task-card-title">${t.title}</div>
-        <div class="task-card-meta">
-          <span class="task-card-assignee">${t.assignee==='Dex'?'⚡':'👤'} ${t.assignee}</span>
-          <span class="task-card-priority ${t.priority}">${t.priority}</span>
-          <span>${t.project}</span>
+      <!-- Stats Row -->
+      <div class="stats-row">
+        <div class="stat-tile" onclick="openRevModal()">
+          <div class="stat-eyebrow">Revenue</div>
+          <div class="stat-value" id="statRevValue" style="color:var(--green)">$0</div>
+          <div class="stat-sub" id="statRevSub">/ $100K</div>
+          <div class="stat-bar-bg"><div class="stat-bar-fill" id="statRevBar" style="width:0%;background:linear-gradient(90deg,var(--green),#00ff88);"></div></div>
         </div>
-      </div>`;
-    });
-    html += `<button class="add-task-btn">+ Add Task</button></div>`;
-    board.innerHTML += html;
-  });
-}
+        <div class="stat-tile" onclick="openStreak()">
+          <div class="stat-eyebrow">Streak</div>
+          <div class="stat-value" id="statStreakValue" style="color:var(--gold)">0</div>
+          <div class="stat-sub" id="statStreakSub">days</div>
+          <div class="stat-bar-bg"><div class="stat-bar-fill" id="statStreakBar" style="width:0%;background:linear-gradient(90deg,var(--gold),#D4A800);"></div></div>
+        </div>
+        <div class="stat-tile" onclick="switchTab('tasks')">
+          <div class="stat-eyebrow">Tasks</div>
+          <div class="stat-value" id="statTasksValue" style="color:var(--accent)">0/0</div>
+          <div class="stat-sub" id="statTasksSub">done today</div>
+          <div class="stat-bar-bg"><div class="stat-bar-fill" id="statTasksBar" style="width:0%;background:linear-gradient(90deg,var(--accent),#0099cc);"></div></div>
+        </div>
+      </div>
 
-// ========== CALENDAR ==========
-let calDate = new Date();
+      <!-- Top Tasks -->
+      <div class="sec">
+        <div class="sec-label">
+          <span>Tasks</span>
+          <button class="sec-link" onclick="switchTab('tasks')">View All →</button>
+        </div>
+        <div class="task-list" id="homeTopTasks"></div>
+      </div>
 
-const calEvents = [
-  // Add scheduled tasks and cron jobs here
-  { date:"2026-03-03", title:"Mission Control build", type:"task" },
-  { date:"2026-03-03", title:"iMessage architecture doc", type:"task" },
-  { date:"2026-03-03", title:"ASRX redesign planning", type:"task" },
-  { date:"2026-03-03", title:"Fallback models configured", type:"task" },
-];
+      <!-- Schedule -->
+      <div class="sec">
+        <div class="sec-label">Schedule</div>
+        <div class="schedule-card">
+          <div class="sched-header">
+            <div>
+              <div class="live-clock" id="liveClock">--:--</div>
+              <div class="sched-next-name" id="schedNextName">—</div>
+            </div>
+            <div>
+              <div class="sched-next-lbl">Next up</div>
+              <div class="sched-countdown" id="schedCountdown">—</div>
+            </div>
+          </div>
+          <div class="sched-events" id="schedEvents"></div>
+          <div class="sched-footer">
+            <div class="sun-item">Sunrise <strong id="sunriseTime">—</strong></div>
+            <div class="sun-item">Sunset <strong id="sunsetTime">—</strong></div>
+          </div>
+        </div>
+      </div>
 
-function renderCalendar() {
-  const grid = document.getElementById('calGrid');
-  const monthEl = document.getElementById('calMonth');
-  const year = calDate.getFullYear();
-  const month = calDate.getMonth();
-  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  monthEl.textContent = `${months[month]} ${year}`;
+      <!-- Latest Intel -->
+      <div class="sec">
+        <div class="sec-label">
+          <span>Intel</span>
+          <button class="sec-link" onclick="switchTab('intel')">View All →</button>
+        </div>
+        <div id="homeLatestIntel"></div>
+      </div>
 
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = new Date();
+      <!-- Revenue Tracker (collapsible) -->
+      <div class="sec">
+        <div class="card">
+          <div class="rev-header" id="revToggleBtn" onclick="toggleRevTracker()">
+            <div class="rev-header-left">
+              <span class="rev-header-label">Revenue</span>
+              <span class="rev-total" id="revTotal">$0</span>
+            </div>
+            <span class="rev-header-chevron" id="revChevron">▼</span>
+          </div>
+          <div class="rev-body" id="revBody" style="display:none;">
+            <div class="rev-goal-bar-bg"><div class="rev-goal-bar-fill" id="revGoalBar" style="width:0%"></div></div>
+            <div class="rev-companies">
+              <div class="rev-co" onclick="openRevModal()">
+                <div class="rev-co-name">ASRX</div>
+                <div class="rev-co-amt" id="revCoAsrx">$0</div>
+                <div class="rev-co-pipe" id="revCoPipeAsrx">$0 pipeline</div>
+                <div class="rev-co-bar-bg"><div class="rev-co-bar-fill" id="revBarAsrx" style="width:0%;background:linear-gradient(90deg,var(--accent),#0099cc);"></div></div>
+              </div>
+              <div class="rev-co" onclick="openRevModal()">
+                <div class="rev-co-name">ClearMeds</div>
+                <div class="rev-co-amt" id="revCoClearmeds">$0</div>
+                <div class="rev-co-pipe" id="revCoPipeClearmeds">$0 pipeline</div>
+                <div class="rev-co-bar-bg"><div class="rev-co-bar-fill" id="revBarClearmeds" style="width:0%;background:linear-gradient(90deg,var(--green),#00b359);"></div></div>
+              </div>
+              <div class="rev-co" onclick="openRevModal()">
+                <div class="rev-co-name">Dextor AI</div>
+                <div class="rev-co-amt" id="revCoDextorai">$0</div>
+                <div class="rev-co-pipe" id="revCoPipeDextorai">$0 pipeline</div>
+                <div class="rev-co-bar-bg"><div class="rev-co-bar-fill" id="revBarDextorai" style="width:0%;background:linear-gradient(90deg,var(--purple),#7c3aed);"></div></div>
+              </div>
+              <div class="rev-co" onclick="openRevModal()">
+                <div class="rev-co-name">Dextor App</div>
+                <div class="rev-co-amt" id="revCoDexjar">$0</div>
+                <div class="rev-co-pipe" id="revCoPipeDexjar">Pre-launch</div>
+                <div class="rev-co-bar-bg"><div class="rev-co-bar-fill" id="revBarDexjar" style="width:0%;background:linear-gradient(90deg,var(--gold),#D4A800);"></div></div>
+              </div>
+            </div>
+            <div class="rev-edit-hint" onclick="openRevModal()">Tap to update revenue →</div>
+          </div>
+        </div>
+      </div>
 
-  let html = '';
-  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => html += `<div class="cal-header">${d}</div>`);
+    </div><!-- /tab-home -->
 
-  for (let i = 0; i < firstDay; i++) html += `<div></div>`;
+    <!-- ══════════════ TASKS TAB ══════════════ -->
+    <div id="tab-tasks" class="tab-pane">
+      <div class="progress-wrap" style="margin-top:12px;">
+        <div class="progress-hdr">
+          <span class="progress-label">Today's Progress</span>
+          <span class="progress-count" id="progressCount">0 / 0</span>
+        </div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+      <div style="padding:12px 0 0;">
+        <div class="task-list" id="allTasksList"></div>
+      </div>
+    </div><!-- /tab-tasks -->
 
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isToday = today.getFullYear()===year && today.getMonth()===month && today.getDate()===d;
-    const dayEvents = calEvents.filter(e => e.date === dateStr);
-    html += `<div class="cal-day${isToday?' today':''}">
-      <div class="cal-day-num">${d}</div>
-      ${dayEvents.map(e => `<div class="cal-event ${e.type}">${e.title}</div>`).join('')}
-    </div>`;
+    <!-- ══════════════ PIPELINE TAB ══════════════ -->
+    <div id="tab-pipeline" class="tab-pane">
+      <div class="sec" style="margin-top:12px;">
+        <div class="sec-label">Pipeline — All Companies</div>
+        <div class="pipeline-scroll">
+          <div class="pipeline-cols">
+            <div class="pipeline-col">
+              <div class="pipeline-col-hdr cold">Prospect <span class="pipeline-count" id="cnt-cold">0</span></div>
+              <div class="pipeline-cards" id="col-cold"></div>
+              <button class="pipe-add-btn" onclick="addLead('cold')">+ Add lead</button>
+            </div>
+            <div class="pipeline-col">
+              <div class="pipeline-col-hdr called">Contacted <span class="pipeline-count" id="cnt-called">0</span></div>
+              <div class="pipeline-cards" id="col-called"></div>
+              <button class="pipe-add-btn" onclick="addLead('called')">+ Add lead</button>
+            </div>
+            <div class="pipeline-col">
+              <div class="pipeline-col-hdr hot">Hot <span class="pipeline-count" id="cnt-hot">0</span></div>
+              <div class="pipeline-cards" id="col-hot"></div>
+              <button class="pipe-add-btn" onclick="addLead('hot')">+ Add lead</button>
+            </div>
+            <div class="pipeline-col">
+              <div class="pipeline-col-hdr closed">Closed <span class="pipeline-count" id="cnt-closed">0</span></div>
+              <div class="pipeline-cards" id="col-closed"></div>
+              <button class="pipe-add-btn" onclick="addLead('closed')">+ Add lead</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /tab-pipeline -->
+
+    <!-- ══════════════ INTEL TAB ══════════════ -->
+    <div id="tab-intel" class="tab-pane">
+
+      <!-- Dex Inbox -->
+      <div class="sec" style="margin-top:12px;">
+        <div class="sec-label">
+          <span>Dex Inbox <span id="inboxUnreadBadge" style="color:var(--danger);font-weight:700;"></span></span>
+        </div>
+        <div class="inbox-list" id="inboxList"></div>
+      </div>
+
+      <!-- Full Intel Feed -->
+      <div class="sec">
+        <div class="sec-label">Intelligence Feed</div>
+        <div id="fullIntelFeed" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+
+      <!-- In Progress -->
+      <div class="sec">
+        <div class="sec-label">In Progress</div>
+        <div class="meeting-card"><div class="meeting-status" style="color:var(--green)">Live</div><div><div class="meeting-info-title">Hanna + Meg Emails</div><div class="meeting-info-sub">ClearMeds outreach · Instantly campaign active · sending today</div></div></div>
+        <div class="meeting-card"><div class="meeting-status" style="color:var(--green)">Replied</div><div><div class="meeting-info-title">LocumTele — Dr. Palumbo</div><div class="meeting-info-sub">ASRX clinical partner · responded same day · scheduling call Tue–Thu · CC: Shay Hutchinson</div></div></div>
+        <div class="meeting-card"><div class="meeting-status" style="color:var(--green)">Booked</div><div><div class="meeting-info-title">OpenLoop — Luke Williams</div><div class="meeting-info-sub">ASRX clinical backend · Tue Mar 17 @ 2:00 PM CT · intro via Brian Godla</div></div></div>
+        <div class="meeting-card"><div class="meeting-status" style="color:var(--warn)">Pending</div><div><div class="meeting-info-title">Sierra Voice Clone</div><div class="meeting-info-sub">Needs 3–5 min audio · ElevenLabs Starter active · voice ID: CSjHurhSsZqGUs3YcCXm</div></div></div>
+        <div class="meeting-card"><div class="meeting-status" style="color:var(--warn)">Pending</div><div><div class="meeting-info-title">LLC Reinstatement</div><div class="meeting-info-sub">NW Registered Agent 1-888-449-2638</div></div></div>
+        <div class="meeting-card"><div class="meeting-status" style="color:var(--warn)">Waiting</div><div><div class="meeting-info-title">Singular — Tyler McNulty</div><div class="meeting-info-sub">Awaiting tech lead assessment + follow-up email · DexJar Dev paused</div></div></div>
+        <div class="meeting-card"><div class="meeting-status" style="color:var(--accent)">Active</div><div><div class="meeting-info-title">HardwareDex — Dextor Hub</div><div class="meeting-info-sub">Pi 5 + Mission Control PWA · $399 device + $49/mo · onboarding wizard at dextor.ai/setup/</div></div></div>
+      </div>
+
+      <!-- Upcoming -->
+      <div class="sec">
+        <div class="sec-label">Upcoming</div>
+        <div class="meeting-card"><div class="meeting-status" style="color:var(--accent)">Tue Mar 17<br/>2:00 PM CT</div><div><div class="meeting-info-title">OpenLoop — Luke Williams</div><div class="meeting-info-sub">ASRX clinical backend call · intro via Brian Godla · prep sheet needed</div></div></div>
+        <div class="meeting-card"><div class="meeting-status" style="color:var(--accent)">Tue–Thu<br/>Mar 17–19</div><div><div class="meeting-info-title">LocumTele — Dr. Palumbo</div><div class="meeting-info-sub">Scheduling call · ASRX clinical partner · CC: Shay Hutchinson</div></div></div>
+        <div class="meeting-card"><div class="meeting-status">Mon Mar 16<br/>9:00 AM</div><div><div class="meeting-info-title">LLC Reinstatement</div><div class="meeting-info-sub">Call NW Registered Agent · 1-888-449-2638</div></div></div>
+      </div>
+
+    </div><!-- /tab-intel -->
+
+    <!-- ══════════════ MORE TAB ══════════════ -->
+    <div id="tab-more" class="tab-pane">
+
+      <!-- Quick Actions -->
+      <div class="sec" style="margin-top:12px;">
+        <div class="sec-label">Quick Actions</div>
+        <div class="qa-grid">
+          <button class="qa-btn" onclick="qaAction('draft_email')"><span>📧</span> Draft Email</button>
+          <button class="qa-btn" onclick="qaAction('log_call')"><span>📞</span> Log a Call</button>
+          <button class="qa-btn" onclick="qaAction('new_idea')"><span>💡</span> New Idea</button>
+          <button class="qa-btn" onclick="qaAction('research')"><span>🔍</span> Research This</button>
+          <button class="qa-btn" onclick="qaAction('add_task')"><span>✅</span> Add Task</button>
+          <button class="qa-btn" onclick="qaAction('ping_dex')"><span>⚡</span> Ping Dex</button>
+        </div>
+      </div>
+
+      <!-- Brain Dump -->
+      <div class="sec">
+        <div class="sec-label">Brain Dump</div>
+        <div class="brain-wrap">
+          <div class="brain-header">
+            <div class="brain-title">Scratch Pad — Dex reads this</div>
+            <button class="brain-clear" onclick="clearBrainDump()">clear</button>
+          </div>
+          <textarea class="brain-area" id="brainDump"
+            placeholder="Type anything — ideas, notes, instructions for Dex, things to remember."
+            oninput="saveBrainDump()" rows="4"></textarea>
+          <div class="brain-footer" id="brainSaved">autosaved</div>
+        </div>
+      </div>
+
+      <!-- Portfolio -->
+      <div class="sec">
+        <div class="sec-label">Portfolio</div>
+        <div class="project-list">
+          <div class="project-card" id="proj-asrx">
+            <div class="project-left"><div class="project-name">ASRX / AccessRx</div><div class="project-desc">DTC telehealth access platform</div></div>
+            <div class="project-btns">
+              <button class="ps-btn" onclick="setProjectStatus('asrx','active')">▶</button>
+              <button class="ps-btn" onclick="setProjectStatus('asrx','pause')">⏸</button>
+              <button class="ps-btn" onclick="setProjectStatus('asrx','done')">✓</button>
+            </div>
+            <div class="project-badge" id="badge-asrx">Active</div>
+          </div>
+          <div class="project-card" id="proj-clearmeds">
+            <div class="project-left"><div class="project-name">ClearMeds</div><div class="project-desc">Domestic peptide manufacturer</div></div>
+            <div class="project-btns">
+              <button class="ps-btn" onclick="setProjectStatus('clearmeds','active')">▶</button>
+              <button class="ps-btn" onclick="setProjectStatus('clearmeds','pause')">⏸</button>
+              <button class="ps-btn" onclick="setProjectStatus('clearmeds','done')">✓</button>
+            </div>
+            <div class="project-badge" id="badge-clearmeds">Active</div>
+          </div>
+          <div class="project-card" id="proj-dextorai">
+            <div class="project-left"><div class="project-name">Dextor AI</div><div class="project-desc">AI automation agency · $1,500/mo</div></div>
+            <div class="project-btns">
+              <button class="ps-btn" onclick="setProjectStatus('dextorai','active')">▶</button>
+              <button class="ps-btn" onclick="setProjectStatus('dextorai','pause')">⏸</button>
+              <button class="ps-btn" onclick="setProjectStatus('dextorai','done')">✓</button>
+            </div>
+            <div class="project-badge" id="badge-dextorai">Active</div>
+          </div>
+          <div class="project-card" id="proj-dexjar">
+            <div class="project-left"><div class="project-name">Dextor App</div><div class="project-desc">Subscription AI chief of staff</div></div>
+            <div class="project-btns">
+              <button class="ps-btn" onclick="setProjectStatus('dexjar','active')">▶</button>
+              <button class="ps-btn" onclick="setProjectStatus('dexjar','pause')">⏸</button>
+              <button class="ps-btn" onclick="setProjectStatus('dexjar','done')">✓</button>
+            </div>
+            <div class="project-badge" id="badge-dexjar">Building</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <div class="sec">
+        <div class="sec-label">Quick Links</div>
+        <div class="links-grid">
+          <a class="link-btn" href="https://dextor.ai" target="_blank" rel="noopener">dextor.ai</a>
+          <a class="link-btn" href="https://dexpope.github.io/asrx-site/" target="_blank" rel="noopener">asrx.health</a>
+          <a class="link-btn" href="https://clearmeds.bio" target="_blank" rel="noopener">clearmeds.bio</a>
+          <a class="link-btn" href="https://dexpope.github.io/clearmeds-site/price-list.html" target="_blank" rel="noopener">Price List</a>
+          <a class="link-btn" href="https://peplabs.bio" target="_blank" rel="noopener">peplabs.bio</a>
+          <a class="link-btn" href="https://app.instantly.ai" target="_blank" rel="noopener">Instantly</a>
+          <a class="link-btn" href="https://dashboard.retellai.com" target="_blank" rel="noopener">RetellAI</a>
+          <a class="link-btn" href="https://calendly.com/dextor-ai/30min" target="_blank" rel="noopener">Calendly</a>
+          <a class="link-btn" href="https://console.perplexity.ai" target="_blank" rel="noopener">Perplexity</a>
+          <a class="link-btn" href="https://dextor.ai/demo/" target="_blank" rel="noopener">DemoDex</a>
+          <a class="link-btn" href="https://dextor.ai/order/" target="_blank" rel="noopener">DEXTOPi</a>
+          <a class="link-btn" href="https://dexpope.github.io/saunagram-site/" target="_blank" rel="noopener">Saunagram</a>
+          <a class="link-btn" href="https://discord.com/channels/1473096981868970077/1473096982766813339" target="_blank" rel="noopener">Discord</a>
+        </div>
+      </div>
+
+      <!-- Game Room -->
+      <div class="sec">
+        <div class="sec-label">Game Room</div>
+        <div class="card" style="padding:16px;">
+          <div class="game-meta">
+            <div class="game-score-box"><div class="game-score-lbl">Score</div><div class="game-score-val" id="g2048Score">0</div></div>
+            <div class="game-score-box"><div class="game-score-lbl">Best</div><div class="game-score-val" id="g2048Best">0</div></div>
+            <button class="game-new-btn" onclick="g2048New()">New Game</button>
+          </div>
+          <div class="game-grid" id="g2048Grid"></div>
+          <div class="game-hint">← → ↑ ↓ or swipe to merge · reach 2048 to win</div>
+        </div>
+      </div>
+
+      <div class="more-footer">
+        Powered by Dex <span>⚡</span> &nbsp;|&nbsp; August Aisles LLC &nbsp;&middot;&nbsp; <span style="opacity:.4;">v17</span>
+        &nbsp;&middot;&nbsp; <button class="refresh-btn" onclick="caches.keys().then(k=>Promise.all(k.map(c=>caches.delete(c)))).then(()=>location.reload(true))">refresh</button>
+      </div>
+
+    </div><!-- /tab-more -->
+
+  </div><!-- /page-content -->
+
+  <!-- ══ BOTTOM NAV ══ -->
+  <nav class="bottom-nav">
+    <div class="nav-items">
+      <button class="nav-item active" id="nav-home" onclick="switchTab('home')" aria-label="Home">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+        <span class="nav-label">Home</span>
+      </button>
+      <button class="nav-item" id="nav-tasks" onclick="switchTab('tasks')" aria-label="Tasks">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
+        <span class="nav-label">Tasks</span>
+      </button>
+      <button class="nav-item" id="nav-pipeline" onclick="switchTab('pipeline')" aria-label="Pipeline">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="6" height="18" rx="1"/><rect x="9" y="7" width="6" height="14" rx="1"/><rect x="16" y="11" width="6" height="10" rx="1"/></svg></span>
+        <span class="nav-label">Pipeline</span>
+      </button>
+      <button class="nav-item" id="nav-intel" onclick="switchTab('intel')" aria-label="Intel">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M11 8v3l2 2"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+        <span class="nav-label">Intel</span>
+      </button>
+      <button class="nav-item" id="nav-more" onclick="switchTab('more')" aria-label="More">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none"/></svg></span>
+        <span class="nav-label">More</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ══ FLOATING DEX BUTTON ══ -->
+  <button class="dex-fab" id="dexFab" onclick="toggleChat()" aria-label="Chat with Dex">D</button>
+
+  <!-- ══ CHAT PANEL ══ -->
+  <div class="chat-panel" id="chatPanel">
+    <div class="chat-hdr">
+      <div class="chat-avatar">D</div>
+      <div style="flex:1">
+        <div class="chat-hdr-name">Dex</div>
+        <div class="chat-hdr-status">online · AI chief of staff</div>
+      </div>
+      <button class="chat-close" onclick="toggleChat()">✕</button>
+    </div>
+    <div class="chat-msgs" id="chatMsgs"></div>
+    <div class="chat-input-bar">
+      <textarea class="chat-input" id="chatInput" placeholder="Message Dex…" rows="1"
+        onkeydown="chatKeyDown(event)"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+      <button class="chat-send" id="chatSendBtn" onclick="sendChatMsg()">
+        <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ REVENUE MODAL ══ -->
+  <div class="rev-modal-bd" id="revModalBackdrop" onclick="if(event.target===this)closeRevModal()">
+    <div class="rev-modal">
+      <h3>Update Revenue</h3>
+      <div class="rev-field"><label>ASRX — Closed ($)</label><input type="number" id="rev-asrx" placeholder="0" min="0" /></div>
+      <div class="rev-field"><label>ASRX — Pipeline ($)</label><input type="number" id="rev-asrx-pipe" placeholder="0" min="0" /></div>
+      <div class="rev-field"><label>ClearMeds — Closed ($)</label><input type="number" id="rev-clearmeds" placeholder="0" min="0" /></div>
+      <div class="rev-field"><label>ClearMeds — Pipeline ($)</label><input type="number" id="rev-clearmeds-pipe" placeholder="0" min="0" /></div>
+      <div class="rev-field"><label>Dextor AI — Closed ($)</label><input type="number" id="rev-dextorai" placeholder="0" min="0" /></div>
+      <div class="rev-field"><label>Dextor AI — Pipeline ($)</label><input type="number" id="rev-dextorai-pipe" placeholder="0" min="0" /></div>
+      <div class="rev-field"><label>Dextor App — Closed ($)</label><input type="number" id="rev-dexjar" placeholder="0" min="0" /></div>
+      <div class="rev-modal-actions">
+        <button class="rev-save" onclick="saveRevenue()">Save</button>
+        <button class="rev-cancel" onclick="closeRevModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CALL SCRIPT MODAL ══ -->
+  <div class="modal-backdrop" id="scriptModal" onclick="if(event.target===this)closeScript()">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <div class="modal-title">ClearMeds Call Script</div>
+        <button class="modal-close" onclick="closeScript()">✕</button>
+      </div>
+      <div class="script-section">Identity</div>
+      <div class="script-block"><strong>Chayse Winter</strong> · ClearMedsCorp · Callback: <strong>(713) 280-9876</strong></div>
+      <div class="script-section">Opening</div>
+      <div class="script-block"><em>"Hi, this is Chayse with ClearMeds — do you handle peptide sourcing for the clinic?"</em><br><br><span style="color:var(--text-muted);font-size:.82rem;">If no → "Who would be the best person to speak with about that?"</span></div>
+      <div class="script-section">Pitch</div>
+      <div class="script-block"><em>"Perfect. So we're a domestic peptide manufacturer based here in the US. We supply clinics with peptides, HRT compounds, and weight loss peptides like semaglutide and tirzepatide. Everything is manufactured domestically — no import delays, no 15% tariff markup, full FDA compliance documentation. Are you currently sourcing any of these?"</em></div>
+      <div class="script-section">If Interested</div>
+      <div class="script-block"><em>"Great — I can send over our catalog and pricing. What's the best email for you?"</em><br><br><em>"And just so I can make sure it's relevant — what peptides are you currently ordering most?"</em></div>
+      <div class="script-section">Wrap Up</div>
+      <div class="script-block"><em>"Great — I'll shoot that over today. My direct line is 713-280-9876 if you have questions. Thanks [name], have a great day."</em></div>
+      <div class="script-section">Voicemail</div>
+      <div class="script-block"><em>"Hey, this is Chayse calling from ClearMeds. We're a US-based peptide manufacturer working with clinics across the country — domestic supply, no import delays, fully compliant. I wanted to connect about your sourcing. Give me a call back at 713-280-9876 when you get a chance. Thanks."</em></div>
+      <div class="script-section">Objections</div>
+      <div class="script-block" style="line-height:1.9;">
+        <strong style="color:var(--warn)">"We have a supplier"</strong><br><em>"That's great — we're not asking you to switch everything over. A lot of clinics use us as a backup domestic source so they're never caught waiting on an overseas shipment. Would it hurt to have a backup option on file?"</em><br><br>
+        <strong style="color:var(--warn)">"Not interested"</strong><br><em>"No problem at all. Can I ask — is it timing, or is there a specific reason it's not a fit right now?"</em><br><br>
+        <strong style="color:var(--warn)">"Send me info"</strong><br><em>"Absolutely — what's the best email?"</em><br><br>
+        <strong style="color:var(--warn)">"We don't use peptides"</strong><br><em>"Got it — thanks for letting me know. Have a great day!"</em><br><br>
+        <strong style="color:var(--green)">The Close</strong><br><em>"The easiest next step is I send you our full catalog — takes 30 seconds to look over and you'll know immediately if it makes sense. What's the best email for that?"</em>
+      </div>
+      <div class="script-section">Goal — One of Three</div>
+      <div class="script-block" style="line-height:2.2;">✅ Get their email → send catalog<br>📅 Set a callback<br>❌ Move on → next number</div>
+      <div class="script-section">Our Peptides</div>
+      <div class="script-block" style="line-height:2;">
+        <span style="color:var(--text-muted);font-size:.78rem;">Weight Loss / GLP-1</span><br>Semaglutide · Tirzepatide<br><br>
+        <span style="color:var(--text-muted);font-size:.78rem;">Recovery &amp; Healing</span><br>BPC-157 · TB-500 · BPC+TB Blend<br><br>
+        <span style="color:var(--text-muted);font-size:.78rem;">Growth Hormone / Anti-Aging</span><br>Sermorelin · Ipamorelin · CJC-1295 · Tesamorelin · MK-677<br><br>
+        <span style="color:var(--text-muted);font-size:.78rem;">Sexual Health</span><br>PT-141 · Kisspeptin<br><br>
+        <span style="color:var(--text-muted);font-size:.78rem;">Cognitive / Mood</span><br>Semax · Selank · Dihexa<br><br>
+        <span style="color:var(--text-muted);font-size:.78rem;">Immune / Thymic</span><br>Thymosin Alpha-1 · TB-4 · LL-37
+      </div>
+      <div class="script-section">Key Facts</div>
+      <div class="script-block" style="line-height:1.9;color:var(--text-dim);">
+        ✅ 100% US-manufactured — no 15% import tariff<br>
+        ✅ FDA compliant — COA on every batch<br>
+        ✅ Min 100 units per SKU<br>
+        ✅ Callback: (713) 280-9876 | Email: sales@clearmeds.bio
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ QUICK ACTION MODAL ══ -->
+  <div class="modal-backdrop" id="qaModal" onclick="if(event.target===this)closeQaModal()">
+    <div class="modal-box" style="max-width:420px;">
+      <div class="modal-hdr">
+        <div class="modal-title" id="qaModalTitle">Quick Action</div>
+        <button class="modal-close" onclick="closeQaModal()">✕</button>
+      </div>
+      <p style="font-size:.82rem;color:var(--text-dim);margin-bottom:14px;" id="qaModalDesc"></p>
+      <textarea id="qaInput" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.88rem;padding:10px 12px;font-family:inherit;outline:none;resize:none;min-height:80px;" placeholder="Type here…"></textarea>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button onclick="submitQa()" style="flex:1;background:var(--accent);color:#06090F;font-weight:700;font-size:.85rem;padding:10px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;">Send to Dex ⚡</button>
+        <button onclick="closeQaModal()" style="padding:10px 14px;background:var(--surface2);color:var(--text-dim);font-size:.85rem;border:none;border-radius:8px;cursor:pointer;font-family:inherit;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ STREAK MODAL ══ -->
+  <div class="streak-backdrop" id="streakModal" onclick="if(event.target===this)closeStreak()">
+    <div class="streak-box">
+      <div class="streak-hdr">
+        <div>
+          <div class="streak-title">Gold Plan Tracker</div>
+          <div class="streak-period">Mar 8 → Apr 7, 2026</div>
+        </div>
+        <button class="streak-close" onclick="closeStreak()">✕</button>
+      </div>
+      <div class="streak-hero">
+        <div class="streak-stat"><div class="streak-num" id="streakDayNum">—</div><div class="streak-lbl">Days Done</div></div>
+        <div class="streak-divider"></div>
+        <div class="streak-fire">🔥</div>
+        <div class="streak-stat"><div class="streak-num" id="streakCurNum">0</div><div class="streak-lbl">Streak</div></div>
+        <div class="streak-divider"></div>
+        <div class="streak-stat"><div class="streak-num" id="streakBestNum">0</div><div class="streak-lbl">Best</div></div>
+      </div>
+      <div class="streak-dow">
+        <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+      </div>
+      <div class="streak-cal" id="streakCal"></div>
+      <div class="streak-manual">
+        <button class="streak-manual-btn" id="streakTodayBtn" onclick="toggleToday()">Mark Today Complete</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ═══════════════════════════════════════════════════
+  // CONFIG / DATA
+  // ═══════════════════════════════════════════════════
+
+  const DEX_INBOX = [
+    { id:'i1', type:'warn',  time:'Mar 14', text:'LLC must be reinstated before Wed Mar 18. Call NW Registered Agent: 1-888-449-2638. Reminder fires Mon Mar 16 9 AM.' },
+    { id:'i2', type:'alert', time:'Mar 14', text:'OpenLoop call booked — Tue Mar 17 @ 2:00 PM CT with Luke Williams. Prep sheet coming.' },
+    { id:'i3', type:'alert', time:'Mar 14', text:'LocumTele — Dr. Palumbo responded same day. Scheduling call Tue–Thu. Confirm time when received.' },
+    { id:'i4', type:'info',  time:'Mar 14', text:'HardwareDex ACTIVE — Order Pi 5 kit (~$129). Onboarding wizard live at dextor.ai/setup/' },
+    { id:'i5', type:'info',  time:'Mar 13', text:'Hanna + Meg emails live in Instantly — watch for replies to sales@clearmeds.bio.' },
+    { id:'i6', type:'info',  time:'Mar 13', text:'Sierra DocuSign v2 sent — awaiting her signature. Follow up if nothing by Mon Mar 16.' },
+    { id:'i7', type:'done',  time:'Mar 11', text:'USPTO trademark "DEXTOR" filed — Serial #99694954. Owner: August Aisles LLC.' },
+  ];
+
+  const INTEL_FEED = [
+    { company:'asrx',      label:'ASRX',       headline:'GLP-1 telehealth market projected to hit $8B by 2027 as demand outpaces supply', opportunity:'Launch ASRX intake form now — brands that move in 2026 lock in SEO and patient trust before the market saturates.' },
+    { company:'clearmeds', label:'ClearMeds',  headline:'New 15% tariff on Chinese peptide imports taking effect Q2 2026', opportunity:'Lead every cold call and email with the tariff angle — domestic supplier is the strongest differentiator in the market right now.' },
+    { company:'dextorai',  label:'Dextor AI',  headline:'Small business AI adoption up 47% YoY — local clinics and practices now the fastest adopters', opportunity:'Pivot Dextor AI pitch toward medical/wellness practices — your hottest vertical overlaps perfectly with ClearMeds call list.' },
+    { company:'dexjar',    label:'Dextor App', headline:'AI chief of staff apps seeing 3x App Store growth; no dominant mobile-native player yet', opportunity:'The market is ready but uncrowded. Dextor has a 12–18 month window to establish brand before big players move in.' },
+  ];
+
+  const SCHEDULE_EVENTS = [
+    { time:'07:15', label:'Sunrise Sun Gaze' },
+    { time:'08:00', label:'Meditation + Morning Routine' },
+    { time:'09:00', label:'Read — Gold Plan morning block' },
+    { time:'11:00', label:'Workout' },
+    { time:'12:00', label:'Noon — CJC injection' },
+    { time:'12:30', label:'OpenLoop Health Call — Emma Evans' },
+    { time:'14:00', label:'SkimTrady — Review paper trades' },
+    { time:'15:00', label:'Order HardwareDex parts' },
+    { time:'19:15', label:'Sunset Sun Gaze' },
+    { time:'22:00', label:'CJC Night injection' },
+    { time:'22:30', label:'Lights out target' },
+  ];
+
+  // ═══════════════════════════════════════════════════
+  // CONSTANTS & KEYS
+  // ═══════════════════════════════════════════════════
+  const BASE_DATE   = new Date('2026-03-08T12:00:00');
+  const GOLD_START  = new Date('2026-03-08T12:00:00');
+  const GOLD_END    = new Date('2026-04-07T12:00:00');
+  const today       = new Date(); today.setHours(0,0,0,0);
+  const dateKey     = today.toISOString().split('T')[0];
+  const dayDiff     = Math.floor((today - BASE_DATE) / (1000*60*60*24));
+  const goldDay     = Math.max(1, dayDiff);
+
+  const STREAK_KEY   = 'mc_gold_streak';
+  const STORAGE_KEY  = `mc_state_${dateKey}`;
+  const NOTES_KEY    = 'mc_callnotes';
+  const REVENUE_KEY  = 'mc_revenue';
+  const BRAIN_KEY    = 'mc_brain';
+  const INBOX_KEY    = 'mc_inbox_read';
+  const PIPELINE_KEY = 'mc_pipeline';
+  const PRIORITY_KEY = `mc_priority_${dateKey}`;
+  const PROJ_KEY     = 'mc_projects_v1';
+
+  const PROJ_LABELS = { active:'Active', pause:'Paused', done:'Complete' };
+  const PROJ_CLS   = { active:'', pause:'paused', done:'done' };
+
+  const TASKS = ['clearmeds','openloop','morning','content','dba','sierra','meds','hardwaredex'];
+  const SUBS  = ['call1','call2','call3','call4','call5','call6','call7','call8','call9','call10',
+                 'meditation','book','sungaze','workout',
+                 'linkedin','instagram',
+                 'dba-dextorai','dba-asrx','dba-dextor','dba-accessrx','dba-rich',
+                 'sierra-ask','sierra-upload',
+                 'cjc-night','cjc-post','nmn','selank','semax',
+                 'hw-order','hw-shopify','hw-singular','hw-setup','hw-tunnel'];
+  const EXPANDABLE_TASKS = ['clearmeds','morning','content','dba','sierra','meds','hardwaredex'];
+
+  // ═══════════════════════════════════════════════════
+  // STORAGE HELPERS
+  // ═══════════════════════════════════════════════════
+  function load(key, def) {
+    try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : def; } catch { return def; }
   }
-  grid.innerHTML = html;
-}
+  function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
-function changeMonth(delta) {
-  calDate.setMonth(calDate.getMonth() + delta);
-  renderCalendar();
-}
+  // Prune old daily keys
+  (function pruneOld(){
+    const cutoff = new Date(today); cutoff.setDate(cutoff.getDate()-7);
+    for(const k of Object.keys(localStorage)){
+      if(k.startsWith('mc_state_')||k.startsWith('mc_energy_')||k.startsWith('mc_priority_')){
+        const m = k.match(/(\d{4}-\d{2}-\d{2})$/);
+        if(m){ const d=new Date(m[1]); if(!isNaN(d)&&d<cutoff) localStorage.removeItem(k); }
+      }
+    }
+  })();
 
-// ========== MEMORY ==========
-const memories = [
-  { title:"Rich (The Human)", source:"MEMORY.md", icon:"👤", body:"Runs two businesses: Dextor AI (AI automation agency) and ClearMedsCorp (wholesale peptides)\nGoal: $100K revenue ASAP. Dextor AI is the fastest path.\nUses alias 'Chayse Winter' for ClearMeds ONLY\nDiscord: jpope900 | Timezone: CST\nWorking style: moves between tasks fast, wants Dex to execute autonomously" },
-  { title:"Dextor AI", source:"MEMORY.md", icon:"⚡", body:"AI automation agency: voice agents, chatbots, email/SMS automation for local businesses\nPricing: $1,500/mo per client\nWebsite: dextor.ai (GitHub Pages)\nPhone: (832) 384-9727 (Retell AI inbound)\nGuarantee: '40% more captured leads in 90 days — or we work free until you hit it'\nOutreach: Instantly (Hypergrowth plan), 511+ Texas leads across 11 cities" },
-  { title:"ClearMedsCorp", source:"MEMORY.md", icon:"💊", body:"Wholesale peptide manufacturer selling to clinics\nWebsite: clearmeds.bio (GitHub Pages)\nPhone: (713) 280-9876\nAngle: domestic manufacturer = no 15% import tariffs, FDA compliance\nMinimum: 100 units per SKU\nSending email: sales@clearmeds.bio (warmup score 100)\nPhysical mailer kit ready in clearmeds-mail/" },
-  { title:"ASRX.health", source:"MEMORY.md", icon:"🏥", body:"DTC telehealth access & coordination platform — NOT a clinical provider\nDomain: asrx.health\nModel: Intake → eligibility filtering → route to licensed telehealth providers (OpenLoop Health) → ClearMeds supplies peptides\nRevenue: access fees per qualified user, platform fees, coordination fees, manufacturer margins\nStrict non-clinical boundary\nUnfair advantage: vertical integration — owns supply chain through ClearMeds = 58-73% gross margins" },
-  { title:"Infrastructure", source:"MEMORY.md", icon:"🖥️", body:"Mac mini (host), OpenClaw gateway at ws://127.0.0.1:18789\nOllama installed — llama3.2 (text) + llava:7b (vision)\n6 daemons running: OpenClaw, Pmac, SkimTrady, AskPope, ClawdCursor, Ollama\nFallback chain: Claude Opus → Gemini 2.5 Flash → Ollama llama3.2\nBrowser relay drops on heavy SPAs" },
-  { title:"Lessons Learned", source:"MEMORY.md", icon:"📝", body:"DALL-E fails at text/logos — always use code-built SVGs\nBrowser relay unreliable on complex SPAs — prefer API calls\nInstantly API v2 works well for lead uploads\nRich approves faster when shown screenshots/results, not asked questions\nWrap Discord links in <> to suppress embeds\nRetell dynamic variables use {{name}} not {name}\nOutbound cold calls: DON'T open with 'Hey is this [name]?'" },
-  { title:"ASRX Corporate Structure", source:"asrx/CORPORATE-STRUCTURE.md", icon:"🏢", body:"Parent company: AccessRx — ASRX is the brand name\nASRX.health supply = ClearMedsCorp (partnership), backend = OpenLoop Health\nASRX.life supply = PepLabs.bio (research peptides), backend = IRB\nClearMeds is a partner of AccessRx, NOT a subsidiary\nRich owns both domains: asrx.health and asrx.life" },
-  { title:"iMessage Farm (NEW)", source:"dextor/imessage-farm-architecture.md", icon:"📱", body:"Sendblue competitor — build our own iMessage API service\niPhone farm managed by Mac Mini\nEach client gets dedicated iPhone + number\nHybrid approach: Mac Mini = brain, iPhones = workers\nStartup cost ~$1,350 for 10 lines\nRevenue potential: $5,000-10,000/mo at 10 clients\nSell as 'AI-powered iMessage agent' through Dextor AI" },
-];
+  let appState = load(STORAGE_KEY, {tasks:{}, subs:{}, expanded:{}});
 
-function renderMemories() {
-  const grid = document.getElementById('memoryGrid');
-  const query = document.getElementById('memorySearch').value.toLowerCase();
-  const filtered = memories.filter(m =>
-    !query || m.title.toLowerCase().includes(query) || m.body.toLowerCase().includes(query)
-  );
-  grid.innerHTML = filtered.map((m,i) => `
-    <div class="memory-card" onclick="openMemory(${i})">
-      <div class="memory-card-title">${m.icon} ${m.title}</div>
-      <div class="memory-card-source">Source: ${m.source}</div>
-      <div class="memory-card-body">${m.body.replace(/\n/g,'<br>')}</div>
-    </div>
-  `).join('');
-}
+  // ═══════════════════════════════════════════════════
+  // TAB NAVIGATION
+  // ═══════════════════════════════════════════════════
+  let activeTab = 'home';
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('tab-'+tab).classList.add('active');
+    document.getElementById('nav-'+tab).classList.add('active');
+    activeTab = tab;
+    if(tab === 'home') { renderHomeTopTasks(); renderHomeIntel(); }
+    if(tab === 'tasks') renderAllTasks();
+    if(tab === 'pipeline') renderPipeline();
+    if(tab === 'intel') { renderInbox(); renderFullIntelFeed(); }
+  }
 
-function filterMemories() { renderMemories(); }
+  // ═══════════════════════════════════════════════════
+  // HEADER INIT
+  // ═══════════════════════════════════════════════════
+  (function initHeader(){
+    const h = new Date().getHours();
+    let greeting = 'Good morning, Rich';
+    let icon = '☀️';
+    if(h >= 12 && h < 17)  { greeting = 'Good afternoon, Rich'; icon = '🌤'; }
+    else if(h >= 17 && h < 21) { greeting = 'Good evening, Rich'; icon = '🌇'; }
+    else if(h >= 21 || h < 5)  { greeting = 'Good night, Rich'; icon = '🌙'; }
+    document.getElementById('hdrGreeting').textContent = greeting;
+    document.getElementById('hdrDate').textContent = today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    document.getElementById('hdrIcon').textContent = icon;
+  })();
 
-function openMemory(idx) {
-  const m = memories[idx];
-  document.getElementById('memoryModalTitle').textContent = m.icon + ' ' + m.title;
-  document.getElementById('memoryModalSource').textContent = 'Source: ' + m.source;
-  document.getElementById('memoryModalBody').textContent = m.body;
-  document.getElementById('memoryModal').classList.add('open');
-}
-function closeMemory() { document.getElementById('memoryModal').classList.remove('open'); }
+  // ═══════════════════════════════════════════════════
+  // STREAK / GOLD PLAN
+  // ═══════════════════════════════════════════════════
+  function loadStreak() { return load(STREAK_KEY, {}); }
+  function saveStreakData(d) { save(STREAK_KEY, d); }
 
-// ========== IDEAS ==========
-const ideas = [
-  { title:"Dextor AI", icon:"⚡", status:"active", desc:"AI automation agency — voice agents, chatbots, email/SMS automation for local businesses. $1,500/mo per client.", revenue:"$1,500/mo per client", tags:["Agency","AI","Local Biz"], started:"2025-12", business:"Dextor AI" },
-  { title:"ClearMedsCorp", icon:"💊", status:"active", desc:"Wholesale peptide manufacturer selling to clinics. Domestic manufacturing = no 15% import tariffs.", revenue:"B2B wholesale", tags:["Peptides","B2B","Manufacturing"], started:"2025-10", business:"ClearMeds" },
-  { title:"ASRX.health", icon:"🏥", status:"planning", desc:"DTC telehealth access & coordination platform. Intake → provider matching → ClearMeds supplies peptides. 58-73% gross margins via vertical integration.", revenue:"$249-399/mo per patient", tags:["Telehealth","DTC","Peptides"], started:"2026-02", business:"AccessRx" },
-  { title:"ASRX.life", icon:"🧬", status:"idea", desc:"Research peptide platform. Supply from PepLabs.bio, backend via IRB. Sister brand to ASRX.health for research-use compounds.", revenue:"TBD", tags:["Research","Peptides","IRB"], started:"2026-02", business:"AccessRx" },
-  { title:"iMessage Farm", icon:"📱", status:"planning", desc:"Build our own Sendblue competitor — iPhone farm managed by Mac Mini. Sell iMessage automation as premium Dextor AI service. ~$647 startup, $5K-10K/mo at 10 clients.", revenue:"$500-1,000/mo per line", tags:["Infrastructure","iMessage","SaaS"], started:"2026-03", business:"Dextor AI" },
-  { title:"ASRX Site Redesign", icon:"🎨", status:"planning", desc:"Redesign ASRX.health website — hybrid between TrimRx (warm, simple) and AlgoRx (bold, dark). Smoother and more inviting.", revenue:"—", tags:["Design","Website","ASRX"], started:"2026-03", business:"AccessRx" },
-  { title:"Dextor AI Outreach", icon:"📧", status:"active", desc:"Instantly email campaigns — 511+ Texas leads across 11 cities. Hypergrowth plan. Cold email + follow-up sequences.", revenue:"Pipeline", tags:["Outreach","Email","Leads"], started:"2026-02", business:"Dextor AI" },
-  { title:"ClearMeds Physical Mailer", icon:"📬", status:"hold", desc:"Triple-touch direct mail sequence to clinics. Sales letter, price list insert, mailing list CSV ready.", revenue:"B2B pipeline", tags:["Direct Mail","B2B","Outreach"], started:"2026-02", business:"ClearMeds" },
-  { title:"Mission Control", icon:"🖥️", status:"launched", desc:"Centralized dashboard for all operations — team view, task board, calendar, memory bank, and ideas tracker.", revenue:"—", tags:["Internal","Dashboard","Ops"], started:"2026-03", business:"Infrastructure" },
-  { title:"SkimTrady", icon:"📈", status:"active", desc:"Market analysis bot — scans markets and posts trade signals. Runs as always-on daemon on Mac mini.", revenue:"Trading signals", tags:["Bot","Trading","Discord"], started:"2025", business:"Infrastructure" },
-  { title:"Pmac (Polymarket Bot)", icon:"🎲", status:"active", desc:"Prediction market tracker — monitors Polymarket and posts updates to #polymarket Discord channel. Separate bot token.", revenue:"Market intel", tags:["Bot","Polymarket","Discord"], started:"2025", business:"Infrastructure" },
-  { title:"AskPope", icon:"🤖", status:"active", desc:"Discord community engagement bot. Runs as always-on daemon.", revenue:"—", tags:["Bot","Discord","Community"], started:"2025", business:"Infrastructure" },
-  { title:"AI Fallback Chain", icon:"🔄", status:"launched", desc:"Claude Opus → Gemini 2.5 Flash → Ollama llama3.2. Never lose contact when a provider is overloaded.", revenue:"—", tags:["Infrastructure","Reliability"], started:"2026-03", business:"Infrastructure" },
-];
+  function getStreakStats() {
+    const data = loadStreak();
+    let totalDone = 0, curStreak = 0, bestStreak = 0, tmp = 0;
+    const d = new Date(GOLD_START);
+    while(d <= GOLD_END) {
+      const ds = d.toISOString().split('T')[0];
+      if(d <= today) {
+        if(data[ds]) { totalDone++; tmp++; if(tmp > bestStreak) bestStreak = tmp; }
+        else { tmp = 0; }
+      }
+      d.setDate(d.getDate()+1);
+    }
+    const c = new Date(today);
+    while(c >= GOLD_START) {
+      const ds = c.toISOString().split('T')[0];
+      if(data[ds]) { curStreak++; c.setDate(c.getDate()-1); } else break;
+    }
+    return { totalDone, curStreak, bestStreak };
+  }
 
-function renderIdeas() {
-  const grid = document.getElementById('ideasGrid');
-  const active = ideas.filter(i => i.status==='active').length;
-  const hold = ideas.filter(i => i.status==='hold').length;
-  document.getElementById('stat-ideas').textContent = ideas.length;
-  document.getElementById('stat-active-proj').textContent = active;
-  document.getElementById('stat-hold-proj').textContent = hold;
-  document.getElementById('stat-rev').textContent = '$' + ideas.filter(i=>i.revenue && i.revenue!=='—' && i.revenue!=='TBD' && i.revenue!=='Pipeline' && i.revenue!=='B2B wholesale' && i.revenue!=='B2B pipeline').length + ' revenue streams';
+  function updateGoldBadge() {
+    const stats = getStreakStats();
+    const fire  = stats.curStreak > 0 ? ` 🔥${stats.curStreak}` : '';
+    document.getElementById('goldBadge').textContent = `Day ${goldDay}${fire}`;
+    // Update stats tile
+    const el = document.getElementById('statStreakValue');
+    const bar = document.getElementById('statStreakBar');
+    const sub = document.getElementById('statStreakSub');
+    if(el) el.textContent = stats.curStreak;
+    if(sub) sub.textContent = stats.curStreak === 1 ? 'day streak' : 'day streak';
+    if(bar) bar.style.width = Math.min(100, (stats.curStreak / 31) * 100) + '%';
+  }
 
-  grid.innerHTML = ideas.map(idea => `
-    <div class="idea-card">
-      <div class="idea-header">
-        <div class="idea-title">${idea.icon} ${idea.title}</div>
-        <div class="idea-status ${idea.status}">${idea.status}</div>
+  function openStreak() {
+    renderStreakModal();
+    document.getElementById('streakModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeStreak() {
+    document.getElementById('streakModal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function toggleToday() {
+    const data = loadStreak();
+    const ds = today.toISOString().split('T')[0];
+    if(data[ds]) delete data[ds]; else data[ds] = true;
+    saveStreakData(data); renderStreakModal(); updateGoldBadge();
+  }
+  function renderStreakModal() {
+    const data = loadStreak(), stats = getStreakStats();
+    document.getElementById('streakDayNum').textContent = stats.totalDone;
+    document.getElementById('streakCurNum').textContent = stats.curStreak;
+    document.getElementById('streakBestNum').textContent = stats.bestStreak;
+    const todayDs = today.toISOString().split('T')[0];
+    const todayDone = !!data[todayDs];
+    const btn = document.getElementById('streakTodayBtn');
+    btn.textContent = todayDone ? 'Today Marked Complete ✓' : 'Mark Today Complete';
+    btn.className = 'streak-manual-btn' + (todayDone ? ' already' : '');
+    const cal = document.getElementById('streakCal'); cal.innerHTML = '';
+    const d = new Date(GOLD_START);
+    while(d <= GOLD_END) {
+      const ds = d.toISOString().split('T')[0];
+      const isToday = d.getTime() === today.getTime();
+      const isFuture = d > today;
+      const isDone = !!data[ds];
+      let cls = 'streak-day';
+      if(isDone) cls += ' done';
+      else if(isToday) cls += ' today';
+      else if(isFuture) cls += ' future';
+      else cls += ' missed';
+      const chk = isDone ? '✓' : (isToday ? '·' : '');
+      const cell = document.createElement('div');
+      cell.className = cls;
+      cell.title = d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      cell.innerHTML = `<span class="streak-day-n">${d.getDate()}</span><span class="streak-day-chk">${chk}</span>`;
+      if(!isFuture) {
+        (function(ds2){ cell.onclick = function(){
+          const dd = loadStreak();
+          if(dd[ds2]) delete dd[ds2]; else dd[ds2] = true;
+          saveStreakData(dd); renderStreakModal(); updateGoldBadge();
+        }; })(ds);
+      }
+      cal.appendChild(cell);
+      d.setDate(d.getDate()+1);
+    }
+    const filled = Math.ceil(31/7)*7;
+    for(let i=31;i<filled;i++){const e=document.createElement('div');e.className='streak-day empty';cal.appendChild(e);}
+  }
+
+  // ═══════════════════════════════════════════════════
+  // REVENUE
+  // ═══════════════════════════════════════════════════
+  const GOAL_TARGET = 100000;
+  const CO_TARGETS = { asrx:50000, clearmeds:25000, dextorai:18000, dexjar:7000 };
+  function fmt(n){ return n>=1000?'$'+(n/1000).toFixed(n%1000===0?0:1)+'K':'$'+n.toLocaleString(); }
+  function pct(v,m){ return Math.min(100,Math.round((v/m)*100)); }
+
+  (function seedRevenue(){
+    if(localStorage.getItem('mc_rev_seeded_v1')) return;
+    const existing = load(REVENUE_KEY, {});
+    if(Object.values(existing).some(v=>v>0)){ localStorage.setItem('mc_rev_seeded_v1','1'); return; }
+    save(REVENUE_KEY, { asrx:0, asrx_pipe:0, clearmeds:0, clearmeds_pipe:8000, dextorai:0, dextorai_pipe:4500, dexjar:0, dexjar_pipe:3990 });
+    localStorage.setItem('mc_rev_seeded_v1','1');
+  })();
+
+  function renderRevenue() {
+    const rev = load(REVENUE_KEY,{});
+    const total = (rev.asrx||0)+(rev.clearmeds||0)+(rev.dextorai||0)+(rev.dexjar||0);
+    const totalPct = pct(total, GOAL_TARGET);
+    // Header total
+    document.getElementById('revTotal').textContent = fmt(total);
+    document.getElementById('revGoalBar').style.width = totalPct + '%';
+    // Companies
+    ['asrx','clearmeds','dextorai','dexjar'].forEach(k=>{
+      const closed = rev[k]||0, pipe = rev[k+'_pipe']||0;
+      const amt = document.getElementById('revCo'+k.charAt(0).toUpperCase()+k.slice(1));
+      const pe  = document.getElementById('revCoPipe'+k.charAt(0).toUpperCase()+k.slice(1));
+      const bar = document.getElementById('revBar'+k.charAt(0).toUpperCase()+k.slice(1));
+      if(amt) amt.textContent = fmt(closed);
+      if(pe)  pe.textContent = pipe>0?fmt(pipe)+' pipeline':'$0 pipeline';
+      if(bar) bar.style.width = pct(closed, CO_TARGETS[k])+'%';
+    });
+    // Stats tile
+    const sv = document.getElementById('statRevValue');
+    const sb = document.getElementById('statRevBar');
+    const ss = document.getElementById('statRevSub');
+    if(sv) sv.textContent = fmt(total);
+    if(sb) sb.style.width = totalPct+'%';
+    if(ss) ss.textContent = `${totalPct}% of $100K`;
+  }
+
+  function openRevModal() {
+    const rev = load(REVENUE_KEY,{});
+    ['asrx','clearmeds','dextorai','dexjar'].forEach(k=>{
+      const el = document.getElementById('rev-'+k);
+      const pe = document.getElementById('rev-'+k+'-pipe');
+      if(el) el.value = rev[k]||'';
+      if(pe) pe.value = rev[k+'_pipe']||'';
+    });
+    document.getElementById('revModalBackdrop').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeRevModal() {
+    document.getElementById('revModalBackdrop').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function saveRevenue() {
+    const rev = {};
+    ['asrx','clearmeds','dextorai','dexjar'].forEach(k=>{
+      rev[k] = parseFloat(document.getElementById('rev-'+k).value)||0;
+      const pe = document.getElementById('rev-'+k+'-pipe');
+      if(pe) rev[k+'_pipe'] = parseFloat(pe.value)||0;
+    });
+    save(REVENUE_KEY, rev); closeRevModal(); renderRevenue();
+  }
+
+  let revOpen = false;
+  function toggleRevTracker() {
+    revOpen = !revOpen;
+    document.getElementById('revBody').style.display = revOpen ? 'block' : 'none';
+    document.getElementById('revChevron').className = 'rev-header-chevron' + (revOpen ? ' open' : '');
+  }
+
+  // ═══════════════════════════════════════════════════
+  // SCHEDULE + CLOCK
+  // ═══════════════════════════════════════════════════
+  function parseEvtTime(t) {
+    const [h,m] = t.split(':').map(Number);
+    const d = new Date(); d.setHours(h,m,0,0); return d;
+  }
+
+  function renderSchedule() {
+    const now = new Date();
+    const el  = document.getElementById('schedEvents');
+    if(!el) return;
+    el.innerHTML = '';
+    let nextEvt = null;
+    SCHEDULE_EVENTS.forEach(evt => {
+      const t = parseEvtTime(evt.time);
+      const diff = now - t;
+      const isPast = diff > 5*60*1000;
+      const isCurrent = Math.abs(diff) <= 5*60*1000;
+      const isNext = !nextEvt && t > now;
+      if(isNext) nextEvt = { evt, t };
+      const div = document.createElement('div');
+      div.className = 'sched-evt' + (isPast?' past':isCurrent?' current':isNext?' next':'');
+      const hh = t.getHours()%12||12, mm = t.getMinutes().toString().padStart(2,'0');
+      const ap = t.getHours()<12?'AM':'PM';
+      div.innerHTML = `<div class="sched-t">${hh}:${mm} ${ap}</div><div class="sched-dot"></div><div class="sched-lbl">${evt.label}</div>`;
+      el.appendChild(div);
+    });
+    // Countdown
+    const cdEl = document.getElementById('schedCountdown');
+    const nnEl = document.getElementById('schedNextName');
+    if(nextEvt) {
+      const diff = nextEvt.t - now;
+      const hh = Math.floor(diff/3600000), mm = Math.floor((diff%3600000)/60000), ss = Math.floor((diff%60000)/1000);
+      if(cdEl) cdEl.textContent = hh>0 ? `${hh}h ${mm}m` : `${mm}m ${ss}s`;
+      if(nnEl) nnEl.textContent = nextEvt.evt.label.slice(0,35);
+    } else {
+      if(cdEl) cdEl.textContent = 'Done today 🌙';
+      if(nnEl) nnEl.textContent = '';
+    }
+    // Next Up card on Home
+    renderNextUp(nextEvt, now);
+  }
+
+  function renderNextUp(nextEvt, now) {
+    const lbl = document.getElementById('nextUpLabel');
+    const cd  = document.getElementById('nextUpCountdown');
+    if(!lbl) return;
+    if(nextEvt) {
+      lbl.textContent = nextEvt.evt.label;
+      const diff = nextEvt.t - now;
+      const hh = Math.floor(diff/3600000), mm = Math.floor((diff%3600000)/60000), ss = Math.floor((diff%60000)/1000);
+      cd.innerHTML = 'In <strong>' + (hh>0?`${hh}h ${mm}m`:`${mm}m ${ss}s`) + '</strong>';
+    } else {
+      lbl.innerHTML = '<span class="next-up-empty">All scheduled events complete for today</span>';
+      cd.textContent = '';
+    }
+  }
+
+  function updateClock() {
+    const now = new Date();
+    const h = now.getHours()%12||12, m = now.getMinutes().toString().padStart(2,'0');
+    const ap = now.getHours()<12?'AM':'PM';
+    const el = document.getElementById('liveClock');
+    if(el) el.textContent = `${h}:${m} ${ap}`;
+  }
+
+  async function fetchSunTimes() {
+    try {
+      const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=29.7604&longitude=-95.3698&daily=sunrise,sunset&timezone=America%2FChicago&forecast_days=1');
+      const data = await res.json();
+      function fmtISO(iso){const d=new Date(iso);let h=d.getHours(),m=d.getMinutes().toString().padStart(2,'0');const ap=h<12?'AM':'PM';h=h%12||12;return `${h}:${m} ${ap}`;}
+      document.getElementById('sunriseTime').textContent = fmtISO(data.daily.sunrise[0]);
+      document.getElementById('sunsetTime').textContent  = fmtISO(data.daily.sunset[0]);
+    } catch {
+      document.getElementById('sunriseTime').textContent = '~7:15 AM';
+      document.getElementById('sunsetTime').textContent  = '~7:30 PM';
+    }
+  }
+
+  // ═══════════════════════════════════════════════════
+  // INTEL FEED
+  // ═══════════════════════════════════════════════════
+  const INTEL_CLS = { asrx:'asrx', clearmeds:'clearmeds', dextorai:'dextorai', dexjar:'dexjar', 'ASRX':'asrx','ClearMeds':'clearmeds','Dextor AI':'dextorai','Dextor App':'dexjar' };
+
+  function buildIntelCard(item) {
+    const co = item.company || '';
+    const cls = INTEL_CLS[co] || 'dextorai';
+    const lbl = item.label || co;
+    const dateStr = item.date ? new Date(item.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : today.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    const div = document.createElement('div');
+    div.className = 'intel-card';
+    div.innerHTML = `<div class="intel-source ${cls}">${lbl}</div>
+      <div class="intel-headline">${item.headline||''}</div>
+      <div class="intel-opportunity">→ ${item.opportunity||''}</div>
+      <div class="intel-time">Morning Intel · ${dateStr}</div>`;
+    return div;
+  }
+
+  function renderHomeIntel() {
+    const el = document.getElementById('homeLatestIntel');
+    if(!el) return;
+    el.innerHTML = '';
+    const items = window._intelData || INTEL_FEED;
+    if(items.length > 0) el.appendChild(buildIntelCard(items[0]));
+  }
+
+  function renderFullIntelFeed(items) {
+    const el = document.getElementById('fullIntelFeed');
+    if(!el) return;
+    el.innerHTML = '';
+    (items || window._intelData || INTEL_FEED).forEach(item => el.appendChild(buildIntelCard(item)));
+  }
+
+  function loadIntelFeed() {
+    fetch('/mission-control/intel.json?v=' + Date.now())
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        window._intelData = (data && data.length) ? data : INTEL_FEED;
+        renderHomeIntel();
+        if(activeTab === 'intel') renderFullIntelFeed();
+      })
+      .catch(() => {
+        window._intelData = INTEL_FEED;
+        renderHomeIntel();
+      });
+  }
+
+  // ═══════════════════════════════════════════════════
+  // DEX INBOX
+  // ═══════════════════════════════════════════════════
+  function renderInbox() {
+    const readSet = load(INBOX_KEY, []);
+    const el = document.getElementById('inboxList');
+    if(!el) return;
+    let unread = 0; el.innerHTML = '';
+    DEX_INBOX.forEach(item => {
+      const isRead = readSet.includes(item.id);
+      if(!isRead) unread++;
+      const div = document.createElement('div');
+      div.className = 'inbox-item' + (isRead ? ' read' : '');
+      div.innerHTML = `<div class="inbox-dot ${item.type}"></div>
+        <div style="flex:1"><div class="inbox-text">${item.text}</div><div class="inbox-time">${item.time}</div></div>
+        <button class="inbox-dismiss" onclick="dismissInbox('${item.id}')" title="Dismiss">✓</button>`;
+      el.appendChild(div);
+    });
+    const badge = document.getElementById('inboxUnreadBadge');
+    if(badge) badge.textContent = unread > 0 ? `(${unread})` : '';
+  }
+  function dismissInbox(id) {
+    const rs = load(INBOX_KEY, []);
+    if(!rs.includes(id)) rs.push(id);
+    save(INBOX_KEY, rs); renderInbox();
+  }
+
+  // ═══════════════════════════════════════════════════
+  // TASKS
+  // ═══════════════════════════════════════════════════
+
+  // Task definitions for rendering
+  const TASK_DEFS = {
+    clearmeds: {
+      title: '📞 ClearMeds Calls', meta: '10 leads · Chayse Winter · (713) 280-9876',
+      expandable: true, scriptBtn: true,
+      subs: [
+        { id:'call1',  label:'+advitam — Manhattan, NY', phone:'2129200499', display:'(212) 920-0499' },
+        { id:'call2',  label:'4Ever Young Ft. Lauderdale — FL', phone:'9543930020', display:'(954) 393-0020' },
+        { id:'call3',  label:'4Ever Young Plantation — FL', phone:'9546867544', display:'(954) 686-7544' },
+        { id:'call4',  label:'Atlas Health Institute — Las Vegas, NV', phone:'7027785900', display:'(702) 778-5900' },
+        { id:'call5',  label:'Better Health Management — Manhattan, NY', phone:'3322374647', display:'(332) 237-4647' },
+        { id:'call6',  label:'Beverly Hills Concierge Doctor — CA', phone:'3106830180', display:'(310) 683-0180' },
+        { id:'call7',  label:'David Borenstein MD — Boca Raton, FL', phone:'7542470122', display:'(754) 247-0122' },
+        { id:'call8',  label:'Dr. Michael Aziz MD — New York, NY', phone:'2129069111', display:'(212) 906-9111' },
+        { id:'call9',  label:'Dr. Neil Paulvin — New York, NY', phone:'6468287844', display:'(646) 828-7844' },
+        { id:'call10', label:'Juvenis Medical — Ft. Lauderdale, FL', phone:'9549828378', display:'(954) 982-8378' },
+      ]
+    },
+    openloop: { title: '🏥 OpenLoop Health Call', meta: '12:30 PM CST · Emma Evans · ASRX clinical backend' },
+    morning: {
+      title: '☀️ Morning Routine', meta: 'Meditation · Read · Sun Gaze · Workout', expandable: true,
+      subs: [
+        { id:'meditation', label:'Meditation' },
+        { id:'book', label:'Read' },
+        { id:'sungaze', label:'Sun Gaze' },
+        { id:'workout', label:'Workout' },
+      ]
+    },
+    content: {
+      title: '✍️ Content', meta: 'LinkedIn + Instagram · Gold Plan requirement', expandable: true,
+      subs: [
+        { id:'linkedin', label:'LinkedIn post' },
+        { id:'instagram', label:'Instagram post' },
+      ]
+    },
+    dba: {
+      title: '💼 DBA Filings', meta: 'SOSDirect + Harris County Clerk · ~$200 · 4 names', expandable: true,
+      subs: [
+        { id:'dba-dextorai', label:'Dextor AI — SOSDirect + Harris County' },
+        { id:'dba-asrx', label:'ASRX — SOSDirect + Harris County' },
+        { id:'dba-dextor', label:'Dextor — SOSDirect + Harris County' },
+        { id:'dba-accessrx', label:'AccessRx — SOSDirect + Harris County' },
+        { id:'dba-rich', label:'Rich Winter — Harris County' },
+      ]
+    },
+    sierra: {
+      title: '🎙️ Sierra — Voice Clone', meta: 'Text her · needs 3–5 min audio · ElevenLabs', expandable: true,
+      subs: [
+        { id:'sierra-ask', label:'Text Sierra — request audio' },
+        { id:'sierra-upload', label:'Upload to ElevenLabs when received' },
+      ]
+    },
+    meds: {
+      title: '💊 Meds', meta: 'CJC · NMN · Selank · Semax', expandable: true,
+      subs: [
+        { id:'cjc-night', label:'CJC — Night' },
+        { id:'cjc-post', label:'CJC — Post Workout' },
+        { id:'nmn', label:'NMN' },
+        { id:'selank', label:'Selank (if stressed)' },
+        { id:'semax', label:'Semax (Tue & Thu)' },
+      ]
+    },
+    hardwaredex: {
+      title: '🖥️ HardwareDex — Dextor Hub', meta: 'Order hardware · $399 device + $49/mo · launch route', expandable: true,
+      subs: [
+        { id:'hw-order', label:'Order Pi 5 kit (5 items) from Amazon — ~$129' },
+        { id:'hw-shopify', label:'Set up pre-order page (Shopify or Stripe) — $399 + $49/mo' },
+        { id:'hw-singular', label:'Read Tyler (Singular) email when it arrives Mon/Tue' },
+        { id:'hw-setup', label:'Dex: Write Pi setup script (awaiting hardware)' },
+        { id:'hw-tunnel', label:'Dex: Wire Cloudflare Tunnel for global access' },
+      ]
+    },
+  };
+
+  function buildTaskCard(taskId, compact) {
+    const def = TASK_DEFS[taskId]; if(!def) return null;
+    const isDone = !!appState.tasks[taskId];
+    const isExpanded = !!(appState.expanded && appState.expanded[taskId]);
+    const wrap = document.createElement('div');
+    wrap.id = `card-${taskId}`;
+    wrap.className = 'card' + (isDone ? ' task-done-card' : '');
+    wrap.style.marginBottom = compact ? '0' : '';
+
+    let html = `<div class="task-item${isDone?' done':''}" id="taskrow-${taskId}">
+      <div class="task-cb${isDone?' checked':''}" id="taskcb-${taskId}"
+        onclick="event.stopPropagation();toggleTask('${taskId}')"><span class="chk">✓</span></div>
+      <div class="task-body" onclick="${def.expandable?`toggleExpand('${taskId}')`:`toggleTask('${taskId}')`}">
+        <div class="task-name">${def.title}</div>
+        ${def.meta?`<div class="task-meta-txt">${def.meta}</div>`:''}
       </div>
-      <div class="idea-desc">${idea.desc}</div>
-      <div class="idea-meta">
-        ${idea.tags.map(t => `<span class="idea-tag">${t}</span>`).join('')}
-        ${idea.revenue !== '—' ? `<span class="idea-tag idea-revenue">${idea.revenue}</span>` : ''}
-      </div>
-      <div class="idea-date">Started: ${idea.started} · ${idea.business}</div>
-    </div>
-  `).join('');
-}
+      ${def.expandable?`<div class="task-chevron${isExpanded?' open':''}" id="taskarrow-${taskId}"
+        onclick="toggleExpand('${taskId}')">›</div>`:''}
+    </div>`;
 
-// ========== NAVIGATION ==========
-function showScreen(name) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.topbar-nav button').forEach(b => b.classList.remove('active'));
-  document.getElementById('screen-'+name).classList.add('active');
-  event.target.classList.add('active');
-}
+    if(def.expandable && def.subs) {
+      html += `<div class="subtask-list" id="subs-${taskId}" style="display:${isExpanded?'block':'none'};">`;
+      if(def.scriptBtn) {
+        html += `<div class="subtask-actions"><span class="subtask-actions-label">Today's Leads</span>
+          <button class="script-btn" onclick="openScript()">Call Script</button></div>`;
+      }
+      def.subs.forEach(sub => {
+        const subDone = !!appState.subs[sub.id];
+        html += `<div class="subtask-item${subDone?' done':''}" id="subrow-${sub.id}" onclick="toggleSub('${sub.id}')">
+          <div class="sub-cb${subDone?' checked':''}" id="subcb-${sub.id}"><span class="chk">✓</span></div>
+          <div class="sub-label">${sub.label}</div>
+          ${sub.phone?`<div class="sub-phone"><a href="tel:${sub.phone}" onclick="event.stopPropagation()">${sub.display}</a></div>`:''}
+          ${sub.phone?`<div class="notes-toggle" onclick="event.stopPropagation();toggleNotes('${sub.id}')" title="Notes">✎</div>`:''}
+        </div>
+        ${sub.phone?`<div class="notes-wrap" id="notes-${sub.id}"><textarea id="notesarea-${sub.id}" placeholder="Call notes…" oninput="saveNote('${sub.id}')" rows="2"></textarea></div>`:''}`;
+      });
+      html += '</div>';
+    }
 
-// ========== CLOCK ==========
-function updateClock() {
-  const now = new Date();
-  document.getElementById('clock').textContent = now.toLocaleString('en-US', {
-    timeZone:'America/Chicago', weekday:'short', month:'short', day:'numeric',
-    hour:'2-digit', minute:'2-digit', second:'2-digit'
+    wrap.innerHTML = html;
+    return wrap;
+  }
+
+  function renderHomeTopTasks() {
+    const el = document.getElementById('homeTopTasks'); if(!el) return;
+    el.innerHTML = '';
+    let count = 0;
+    for(const taskId of TASKS) {
+      if(count >= 3) break;
+      if(!appState.tasks[taskId]) {
+        const card = buildTaskCard(taskId, true);
+        if(card) el.appendChild(card);
+        count++;
+      }
+    }
+    if(count === 0) {
+      el.innerHTML = '<div style="text-align:center;padding:16px;font-size:.82rem;color:var(--text-muted);">All tasks complete ✓</div>';
+    }
+  }
+
+  function renderAllTasks() {
+    const el = document.getElementById('allTasksList'); if(!el) return;
+    el.innerHTML = '';
+    TASKS.forEach(taskId => {
+      const card = buildTaskCard(taskId, false);
+      if(card) el.appendChild(card);
+    });
+    restoreNotes();
+  }
+
+  function toggleTask(id) {
+    appState.tasks[id] = !appState.tasks[id];
+    save(STORAGE_KEY, appState);
+    // Update in both home and tasks tab
+    ['card-','taskrow-','taskcb-'].forEach(prefix => {
+      const el = document.getElementById(prefix+id);
+      if(!el) return;
+      if(prefix === 'card-') el.querySelector('.task-item')&&el.querySelector('.task-item').classList.toggle('done', !!appState.tasks[id]);
+      if(prefix === 'taskrow-') el.classList.toggle('done', !!appState.tasks[id]);
+      if(prefix === 'taskcb-') el.classList.toggle('checked', !!appState.tasks[id]);
+    });
+    updateProgress();
+    if(activeTab === 'home') renderHomeTopTasks();
+    // Auto-mark Gold Plan if all done
+    const totalTasks = TASKS.length + SUBS.length;
+    let doneTasks = 0;
+    TASKS.forEach(i=>{ if(appState.tasks[i]) doneTasks++; });
+    SUBS.forEach(i=>{ if(appState.subs[i]) doneTasks++; });
+    if(doneTasks === totalTasks) {
+      const sd = loadStreak();
+      if(!sd[dateKey]) { sd[dateKey]=true; saveStreakData(sd); updateGoldBadge(); }
+    }
+  }
+
+  function toggleSub(id) {
+    appState.subs[id] = !appState.subs[id];
+    save(STORAGE_KEY, appState);
+    const row = document.getElementById('subrow-'+id);
+    const cb  = document.getElementById('subcb-'+id);
+    if(row) row.classList.toggle('done', !!appState.subs[id]);
+    if(cb)  cb.classList.toggle('checked', !!appState.subs[id]);
+    updateProgress();
+  }
+
+  function toggleExpand(id) {
+    appState.expanded = appState.expanded || {};
+    appState.expanded[id] = !appState.expanded[id];
+    save(STORAGE_KEY, appState);
+    const subsEl  = document.getElementById('subs-'+id);
+    const arrowEl = document.getElementById('taskarrow-'+id);
+    const open = !!appState.expanded[id];
+    if(subsEl)  subsEl.style.display = open ? 'block' : 'none';
+    if(arrowEl) { arrowEl.classList.toggle('open', open); }
+  }
+
+  function updateProgress() {
+    const total = TASKS.length + SUBS.length;
+    let done = 0;
+    TASKS.forEach(id=>{ if(appState.tasks[id]) done++; });
+    SUBS.forEach(id=>{ if(appState.subs[id]) done++; });
+    const p = total > 0 ? Math.round((done/total)*100) : 0;
+    const countEl = document.getElementById('progressCount');
+    const fillEl  = document.getElementById('progressFill');
+    if(countEl) countEl.textContent = `${done} / ${total}`;
+    if(fillEl)  fillEl.style.width  = `${p}%`;
+    // Stats tile
+    const sv = document.getElementById('statTasksValue');
+    const sb = document.getElementById('statTasksBar');
+    const doneTasks = TASKS.filter(id=>appState.tasks[id]).length;
+    if(sv) sv.textContent = `${doneTasks}/${TASKS.length}`;
+    if(sb) sb.style.width = `${Math.round((doneTasks/TASKS.length)*100)}%`;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // NOTES
+  // ═══════════════════════════════════════════════════
+  function loadNotes() { return load(NOTES_KEY,{}); }
+  function saveNote(id) {
+    const notes = loadNotes();
+    const el = document.getElementById('notesarea-'+id);
+    if(el) notes[id] = el.value;
+    save(NOTES_KEY, notes);
+  }
+  function toggleNotes(id) {
+    const wrap = document.getElementById('notes-'+id); if(!wrap) return;
+    const open = wrap.classList.toggle('open');
+    if(open){ const n=loadNotes(); const ta=document.getElementById('notesarea-'+id); if(ta){ta.value=n[id]||'';ta.focus();} }
+  }
+  function restoreNotes() {
+    const notes = loadNotes();
+    ['call1','call2','call3','call4','call5','call6','call7','call8','call9','call10'].forEach(id=>{
+      if(notes[id]){
+        const wrap=document.getElementById('notes-'+id);
+        const ta=document.getElementById('notesarea-'+id);
+        if(wrap&&ta){ ta.value=notes[id]; wrap.classList.add('open'); }
+      }
+    });
+  }
+
+  // ═══════════════════════════════════════════════════
+  // BRAIN DUMP
+  // ═══════════════════════════════════════════════════
+  function saveBrainDump() {
+    save(BRAIN_KEY, document.getElementById('brainDump').value);
+    const el = document.getElementById('brainSaved');
+    if(el) { el.textContent = 'saved ✓'; setTimeout(()=>{ el.textContent='autosaved'; }, 1500); }
+  }
+  function clearBrainDump() {
+    if(!confirm('Clear brain dump?')) return;
+    document.getElementById('brainDump').value = '';
+    save(BRAIN_KEY, '');
+  }
+  function restoreBrainDump() {
+    const el = document.getElementById('brainDump');
+    if(el) el.value = load(BRAIN_KEY, '');
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PRIORITY INPUT
+  // ═══════════════════════════════════════════════════
+  function loadPriorityInput() {
+    const el = document.getElementById('priorityInput'); if(!el) return;
+    el.value = load(PRIORITY_KEY, '');
+    el.addEventListener('input', ()=>{
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+      save(PRIORITY_KEY, el.value);
+    });
+    el.style.height = 'auto';
+    el.style.height = (el.scrollHeight || 24) + 'px';
+  }
+
+  // ═══════════════════════════════════════════════════
+  // MODALS
+  // ═══════════════════════════════════════════════════
+  function openScript()  { document.getElementById('scriptModal').classList.add('open'); document.body.style.overflow='hidden'; }
+  function closeScript() { document.getElementById('scriptModal').classList.remove('open'); document.body.style.overflow=''; }
+
+  let currentQaAction = '';
+  const QA_MAP = {
+    draft_email: { title:'Draft Email', desc:'Describe the email you need — who to, what topic, tone.' },
+    log_call:    { title:'Log a Call', desc:'Who did you call? Outcome? Notes?' },
+    new_idea:    { title:'New Idea', desc:'Drop the idea — Dex will save it to the brain dump.' },
+    research:    { title:'Research This', desc:'What should Dex research for you?' },
+    add_task:    { title:'Add Task', desc:'What task should be added to today\'s list?' },
+    ping_dex:    { title:'Ping Dex', desc:'What do you need right now?' },
+  };
+  function qaAction(type) {
+    currentQaAction = type;
+    const m = QA_MAP[type] || { title:'Quick Action', desc:'What do you need?' };
+    document.getElementById('qaModalTitle').textContent = m.title;
+    document.getElementById('qaModalDesc').textContent  = m.desc;
+    document.getElementById('qaInput').value = '';
+    document.getElementById('qaModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    setTimeout(()=>document.getElementById('qaInput').focus(), 100);
+  }
+  function closeQaModal() { document.getElementById('qaModal').classList.remove('open'); document.body.style.overflow=''; }
+  function submitQa() {
+    const val = document.getElementById('qaInput').value.trim(); if(!val) return;
+    const m = QA_MAP[currentQaAction] || {};
+    const bd = document.getElementById('brainDump');
+    bd.value = (bd.value ? bd.value+'\n\n' : '') + `[${m.title||currentQaAction}] ${val}`;
+    saveBrainDump(); closeQaModal();
+  }
+
+  // ESC to close modals
+  document.addEventListener('keydown', e => {
+    if(e.key === 'Escape') {
+      closeScript(); closeRevModal(); closeQaModal(); closeStreak();
+    }
   });
-}
-setInterval(updateClock, 1000);
-updateClock();
 
-// ========== INIT ==========
-renderOffice();
-renderTasks();
-renderCalendar();
-renderMemories();
-renderIdeas();
-</script>
+  // ═══════════════════════════════════════════════════
+  // PIPELINE CRM
+  // ═══════════════════════════════════════════════════
+  function loadPipeline() { return load(PIPELINE_KEY, {cold:[],called:[],hot:[],closed:[]}); }
+  function savePipeline(p) { save(PIPELINE_KEY, p); }
+  function renderPipeline() {
+    const p = loadPipeline();
+    ['cold','called','hot','closed'].forEach(stage => {
+      const col = document.getElementById('col-'+stage);
+      const cnt = document.getElementById('cnt-'+stage);
+      if(!col) return;
+      col.innerHTML = '';
+      if(cnt) cnt.textContent = p[stage].length;
+      p[stage].forEach((lead,i) => {
+        const card = document.createElement('div');
+        card.className = 'pipeline-card'; card.draggable = true;
+        card.innerHTML = `<div class="pc-name">${lead.name}</div><div class="pc-meta">${lead.meta||''}</div>${lead.value?`<div class="pc-val">${lead.value}</div>`:''}`;
+        card.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', JSON.stringify({stage,i})); });
+        card.addEventListener('click', () => moveLead(stage, i));
+        col.appendChild(card);
+      });
+      col.addEventListener('dragover', e => e.preventDefault());
+      col.addEventListener('drop', e => {
+        e.preventDefault();
+        const d = JSON.parse(e.dataTransfer.getData('text/plain'));
+        if(d.stage === stage) return;
+        const pp = loadPipeline();
+        const [item] = pp[d.stage].splice(d.i,1);
+        pp[stage].push(item); savePipeline(pp); renderPipeline();
+      });
+    });
+  }
+  function moveLead(stage, i) {
+    const STAGES = ['cold','called','hot','closed'];
+    const next = STAGES[(STAGES.indexOf(stage)+1)%STAGES.length];
+    if(!confirm(`Move to "${next}"?`)) return;
+    const p = loadPipeline();
+    const [item] = p[stage].splice(i,1);
+    p[next].push(item); savePipeline(p); renderPipeline();
+  }
+  function addLead(stage) {
+    const name = prompt('Lead name:'); if(!name) return;
+    const meta = prompt('Notes:') || '';
+    const p = loadPipeline();
+    p[stage].push({name:name.trim(),meta:meta.trim()});
+    savePipeline(p); renderPipeline();
+  }
+
+  // Seed pipeline once
+  (function seedPipeline(){
+    const existing = load(PIPELINE_KEY, null);
+    const hasData = existing && (['cold','called','hot','closed'].some(s=>existing[s]&&existing[s].length));
+    if(hasData) return;
+    save(PIPELINE_KEY, {
+      cold:[
+        { name:'Wheel Health — ASRX', meta:'Clinical backend · email sending Mon 9 AM', value:'$40K+/yr' },
+        { name:'Push Health — ASRX', meta:'Clinical backend · email sending Mon 9 AM', value:'$25K+/yr' },
+        { name:'Dextor AI — TX Campaign', meta:'511 leads in Instantly · campaign active', value:'$1,500/mo' },
+        { name:'HardwareDex Pre-Order', meta:'Pi kit ordered · pre-order page coming', value:'$399/unit' },
+      ],
+      called:[
+        { name:'Hanna @ ProHealth FL', meta:'ClearMeds · email sent · awaiting reply', value:'~$3K/order' },
+        { name:'Meg @ Regenesis MD', meta:'ClearMeds · email sent · awaiting reply', value:'~$3K/order' },
+        { name:'Tyler McNulty — Singular', meta:'Dextor App dev · awaiting email Mon/Tue', value:'$20-35K' },
+      ],
+      hot:[
+        { name:'OpenLoop — Luke Williams', meta:'ASRX · call booked Tue Mar 17 @ 2pm CT', value:'$50K+/yr' },
+        { name:'LocumTele — Dr. Palumbo', meta:'ASRX · responded same day · scheduling', value:'$30K+/yr' },
+      ],
+      closed:[]
+    });
+  })();
+
+  // ═══════════════════════════════════════════════════
+  // PROJECTS
+  // ═══════════════════════════════════════════════════
+  function setProjectStatus(id, status) {
+    const s = load(PROJ_KEY, {}); s[id] = status; save(PROJ_KEY, s);
+    renderProjectBadge(id, status);
+  }
+  function renderProjectBadge(id, status) {
+    const badge = document.getElementById('badge-'+id); if(!badge) return;
+    badge.textContent = PROJ_LABELS[status] || PROJ_LABELS.active;
+    badge.className = 'project-badge ' + (PROJ_CLS[status] || '');
+  }
+  function initProjects() {
+    const s = load(PROJ_KEY, {});
+    ['asrx','clearmeds','dextorai','dexjar'].forEach(id => {
+      renderProjectBadge(id, s[id] || (id==='dexjar'?'pause':'active'));
+    });
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 2048 GAME
+  // ═══════════════════════════════════════════════════
+  (function(){
+    var board, score, bestScore, gameActive;
+    var BEST_KEY = 'mc_2048_best';
+
+    function initGame(){
+      bestScore = parseInt(localStorage.getItem(BEST_KEY)||'0');
+      document.getElementById('g2048Best').textContent = bestScore;
+      g2048New();
+    }
+
+    window.g2048New = function(){
+      board = Array(16).fill(0); score = 0; gameActive = true;
+      addTile(); addTile(); render();
+    };
+
+    function addTile(){
+      var empty=[]; for(var i=0;i<16;i++) if(board[i]===0) empty.push(i);
+      if(!empty.length) return;
+      board[empty[Math.floor(Math.random()*empty.length)]] = Math.random()<0.9?2:4;
+    }
+
+    function render(){
+      var g = document.getElementById('g2048Grid'); if(!g) return;
+      g.innerHTML = '';
+      board.forEach(function(v){
+        var c=document.createElement('div'); c.className='g-cell';
+        if(v>0){c.textContent=v;c.setAttribute('data-v',v);}
+        g.appendChild(c);
+      });
+      document.getElementById('g2048Score').textContent = score;
+      if(score>bestScore){ bestScore=score; localStorage.setItem(BEST_KEY,bestScore); document.getElementById('g2048Best').textContent=bestScore; }
+    }
+
+    function slide(row){
+      var r=row.filter(function(v){return v!==0;});
+      for(var i=0;i<r.length-1;i++){
+        if(r[i]===r[i+1]){r[i]*=2;score+=r[i];r.splice(i+1,1);i--;}
+      }
+      while(r.length<4) r.push(0); return r;
+    }
+
+    function move(dir){
+      if(!gameActive) return;
+      var prev=board.slice(), rows=[], i;
+      for(i=0;i<4;i++) rows.push(board.slice(i*4,i*4+4));
+      if(dir==='left')  rows=rows.map(slide);
+      if(dir==='right') rows=rows.map(function(r){return slide(r.slice().reverse()).reverse();});
+      if(dir==='up'||dir==='down'){
+        var cols=[[],[],[],[]];
+        rows.forEach(function(r){r.forEach(function(v,ci){cols[ci].push(v);});});
+        if(dir==='up')   cols=cols.map(slide);
+        if(dir==='down') cols=cols.map(function(c){return slide(c.slice().reverse()).reverse();});
+        rows=[[],[],[],[]];
+        cols.forEach(function(c,ci){c.forEach(function(v,ri){rows[ri][ci]=v;});});
+      }
+      board=[]; rows.forEach(function(r){r.forEach(function(v){board.push(v);});});
+      if(board.some(function(v,i){return v!==prev[i];})){addTile();render();checkEnd();}
+    }
+
+    function checkEnd(){
+      if(board.includes(2048)){gameActive=false;return;}
+      for(var i=0;i<16;i++){
+        if(board[i]===0) return;
+        if(i%4!==3&&board[i]===board[i+1]) return;
+        if(i<12&&board[i]===board[i+4]) return;
+      }
+      gameActive=false;
+    }
+
+    document.addEventListener('keydown',function(e){
+      var map={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};
+      if(map[e.key]){e.preventDefault();move(map[e.key]);}
+    });
+
+    var tx=0,ty=0;
+    document.addEventListener('touchstart',function(e){
+      var g=document.getElementById('g2048Grid');
+      if(!g||!g.contains(e.target)) return;
+      tx=e.touches[0].clientX;ty=e.touches[0].clientY;
+    },{passive:true});
+    document.addEventListener('touchend',function(e){
+      var g=document.getElementById('g2048Grid');
+      if(!g||!g.contains(e.changedTouches[0].target)){
+        var ex=e.changedTouches[0].clientX-tx,ey=e.changedTouches[0].clientY-ty;
+        if(Math.abs(ex)<30&&Math.abs(ey)<30) return;
+      }
+      var dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;
+      if(Math.abs(dx)<20&&Math.abs(dy)<20) return;
+      if(Math.abs(dx)>Math.abs(dy)) move(dx>0?'right':'left');
+      else move(dy>0?'down':'up');
+    },{passive:true});
+
+    // Init when more tab opens
+    var gameInited = false;
+    var origSwitch = window.switchTab;
+    window.switchTab = function(tab){
+      origSwitch(tab);
+      if(tab==='more'&&!gameInited){gameInited=true;setTimeout(initGame,100);}
+    };
+  })();
+
+  // ═══════════════════════════════════════════════════
+  // CHAT — SUPABASE REALTIME
+  // ═══════════════════════════════════════════════════
+  const SB_URL = 'https://rbyluaxucsgnwxhukjfe.supabase.co';
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJieWx1YXh1Y3Nnbnd4aHVramZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MTgzMTUsImV4cCI6MjA4ODk5NDMxNX0.nw-8-Eb8ueMdHwbOjjcOsaClx40VRe_EzdxKFPY-dmA';
+  let sbClient = null, chatOpen = false, chatInited = false;
+
+  function getSB(){ if(!sbClient&&window.supabase) sbClient=window.supabase.createClient(SB_URL,SB_KEY); return sbClient; }
+
+  function appendChatMsg(msg){
+    const container = document.getElementById('chatMsgs');
+    const fromDex = msg.role==='dex';
+    const time = new Date(msg.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    const div = document.createElement('div');
+    div.className = 'chat-msg from-'+(fromDex?'dex':'rich');
+    div.dataset.id = msg.id;
+    div.innerHTML = fromDex
+      ? `<div class="chat-msg-avatar">D</div><div><div class="chat-msg-time">${time}</div><div class="chat-bubble">${msg.content}</div></div>`
+      : `<div><div class="chat-msg-time" style="text-align:right">${time}</div><div class="chat-bubble">${msg.content}</div></div>`;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    if(fromDex && !chatOpen) document.getElementById('dexFab').classList.add('has-new');
+  }
+
+  async function initChat(){
+    if(chatInited) return; chatInited = true;
+    const sb = getSB();
+    if(!sb){ document.getElementById('chatMsgs').innerHTML='<div style="padding:16px;color:var(--text-muted);font-size:.82rem;">Chat unavailable — check connection</div>'; return; }
+    const { data } = await sb.from('messages').select('*').order('created_at',{ascending:true}).limit(50);
+    if(data) data.forEach(appendChatMsg);
+    sb.channel('chat-live')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},payload=>appendChatMsg(payload.new))
+      .subscribe();
+  }
+
+  function toggleChat(){
+    chatOpen = !chatOpen;
+    const panel = document.getElementById('chatPanel');
+    const fab   = document.getElementById('dexFab');
+    panel.classList.toggle('open', chatOpen);
+    fab.textContent = chatOpen ? '✕' : 'D';
+    if(chatOpen){
+      fab.classList.remove('has-new');
+      initChat();
+      setTimeout(()=>{ const c=document.getElementById('chatMsgs'); c.scrollTop=c.scrollHeight; document.getElementById('chatInput').focus(); }, 300);
+    }
+  }
+
+  async function sendChatMsg(){
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim(); if(!text) return;
+    input.value = ''; input.style.height = 'auto';
+    document.getElementById('chatSendBtn').disabled = true;
+    const container = document.getElementById('chatMsgs');
+    const temp = document.createElement('div');
+    temp.className = 'chat-msg from-rich'; temp.id = 'pending-msg';
+    temp.innerHTML = `<div><div class="chat-msg-time" style="text-align:right;opacity:.5">Sending…</div><div class="chat-bubble" style="opacity:.6">${text}</div></div>`;
+    container.appendChild(temp); container.scrollTop = container.scrollHeight;
+    const { error } = await getSB().from('messages').insert({role:'rich',content:text});
+    const t = document.getElementById('pending-msg'); if(t) t.remove();
+    document.getElementById('chatSendBtn').disabled = false;
+    if(error){
+      const bd = document.getElementById('brainDump');
+      bd.value = (bd.value?bd.value+'\n\n':'') + `[CHAT] ${text}`;
+      saveBrainDump();
+    }
+  }
+
+  function chatKeyDown(e){
+    if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendChatMsg(); }
+  }
+
+  window.addEventListener('load', async ()=>{
+    const sb = getSB(); if(!sb) return;
+    const { data } = await sb.from('messages').select('id').eq('role','dex').limit(1);
+    if(data&&data.length) document.getElementById('dexFab').classList.add('has-new');
+  });
+
+  // ═══════════════════════════════════════════════════
+  // BOOT
+  // ═══════════════════════════════════════════════════
+  (function boot(){
+    // Init all tasks state
+    updateProgress();
+    renderHomeTopTasks();
+    // Revenue
+    renderRevenue();
+    // Streak
+    updateGoldBadge();
+    // Schedule
+    renderSchedule();
+    updateClock();
+    // Intel
+    loadIntelFeed();
+    // Inbox (render count even if not on intel tab)
+    (function countInbox(){
+      const rs = load(INBOX_KEY,[]);
+      let unread = DEX_INBOX.filter(i=>!rs.includes(i.id)).length;
+      const badge = document.getElementById('inboxUnreadBadge');
+      if(badge) badge.textContent = unread > 0 ? `(${unread})` : '';
+    })();
+    // Brain dump
+    restoreBrainDump();
+    // Priority
+    loadPriorityInput();
+    // Projects
+    initProjects();
+    // Sunrise
+    fetchSunTimes();
+    // Pipeline seed runs in definition above
+    // Tick every 30s
+    setInterval(()=>{ updateClock(); renderSchedule(); }, 30000);
+  })();
+  </script>
 </body>
 </html>
